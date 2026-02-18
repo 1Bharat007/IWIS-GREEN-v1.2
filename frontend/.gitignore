@@ -1,0 +1,32 @@
+# Root ignores
+node_modules/
+**/node_modules/
+
+# Next.js
+frontend/.next/
+frontend/out/
+
+# Backend
+backend/dist/
+
+# Database
+iwis.db
+backend/iwis.db
+
+# Environment files
+.env
+.env.*
+frontend/.env*
+backend/.env*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel
