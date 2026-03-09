@@ -30,3 +30,11 @@ Thumbs.db
 
 # Vercel
 .vercel
+
+
+node_modules
+.next
+.env
+.env.local
+dist
+build

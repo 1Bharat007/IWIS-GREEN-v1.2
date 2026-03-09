@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 18, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/Sakshi%20Sharma/iwis/frontend/app/settings/page.tsx"],"sourcesContent":["export default function SettingsPage() {\r\n  return (\r\n    <div className=\"space-y-10\">\r\n      <h1 className=\"text-4xl font-semibold tracking-tight\">\r\n        Settings\r\n      </h1>\r\n\r\n      <div className=\"p-8 bg-white dark:bg-[#1E293B] rounded-2xl shadow-sm\">\r\n        Notification Preferences\r\n      </div>\r\n    </div>\r\n  );\r\n}\r\n"],"names":[],"mappings":";;;;;;AAAe,SAAS;IACtB,qBACE,kQAAC;QAAI,WAAU;;0BACb,kQAAC;gBAAG,WAAU;0BAAwC;;;;;;0BAItD,kQAAC;gBAAI,WAAU;0BAAuD;;;;;;;;;;;;AAK5E"}}]
-}
