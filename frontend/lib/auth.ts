@@ -1,5 +1,4 @@
-import { saveToken } from "./session";
-
+import { setToken } from "./session";
 const AUTH_BASE_URL = "http://localhost:5000/api/auth";
 
 type AuthPayload = {
@@ -38,7 +37,7 @@ export const loginWithEmail = async (payload: AuthPayload): Promise<string> => {
     throw new Error("No auth token returned from server");
   }
 
-  saveToken(data.token);
+ setToken(data.token);
   return data.token;
 };
 
@@ -50,6 +49,6 @@ export const signupAndLogin = async (payload: AuthPayload): Promise<string> => {
     throw new Error("No auth token returned from server");
   }
 
-  saveToken(token);
+ setToken(token);
   return token;
 };
