@@ -1,6 +1,5 @@
 import { setToken } from "./session";
-const AUTH_BASE_URL = "http://localhost:5000/api/auth";
-
+const AUTH_BASE_URL = "https://iwis-green-v2-1.onrender.com/api/auth";
 type AuthPayload = {
   email: string;
   password: string;
