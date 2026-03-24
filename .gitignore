@@ -1,0 +1,37 @@
+# Root ignores
+node_modules/
+**/node_modules/
+.next/
+**/out/
+
+# Backend specific
+backend/dist/
+backend/*.db
+backend/*.sqlite
+
+# Frontend specific
+frontend/.next/
+frontend/out/
+
+# Environment files
+.env
+.env.*
+frontend/.env*
+backend/.env*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vercel
+.vercel
+
+# General
+dist/
+build/
+*.log

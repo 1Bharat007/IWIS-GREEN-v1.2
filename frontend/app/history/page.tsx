@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { apiFetch } from "@/lib/api";
+import { getToken } from "@/lib/session";
+import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import {
   LineChart,
   Line,
@@ -26,6 +28,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     const load = async () => {
+      if (!getToken()) return;
       try {
         const res = await apiFetch("/waste/history");
 
@@ -63,6 +66,20 @@ export default function HistoryPage() {
     }));
   }, [history]);
 
+  const handleListBatch = async (batchId: string) => {
+    const priceRange = window.prompt("Enter your expected price range in ₹ (e.g., '10-50'):", "20-100");
+    if (!priceRange) return;
+    try {
+      await apiFetch("/marketplace/list", {
+        method: "POST",
+        body: JSON.stringify({ batchId, priceRange })
+      });
+      alert("Waste successfully listed on the Circular Exchange!");
+    } catch (err: any) {
+      alert(err.message || "Failed to list item. It may already be listed.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-sm text-neutral-500">
@@ -72,8 +89,9 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="space-y-10">
-      <h1 className="text-3xl font-semibold">
+    <ProtectedRoute>
+      <div className="space-y-10">
+        <h1 className="text-3xl font-semibold">
         Scan History
       </h1>
 
@@ -138,10 +156,18 @@ export default function HistoryPage() {
               <div className="text-sm text-neutral-500 mt-2">
                 Confidence: {scan.confidence}% • CO₂: {scan.co2} kg
               </div>
+
+              <button 
+                 onClick={() => handleListBatch(scan.id)}
+                 className="mt-4 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition"
+              >
+                 Sell on Circular Exchange
+              </button>
             </div>
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }
