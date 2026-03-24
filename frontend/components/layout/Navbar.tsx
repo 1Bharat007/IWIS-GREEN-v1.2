@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { clearToken } from "@/lib/session";
+import { clearToken, getToken } from "@/lib/session";
 import { useRouter } from "next/navigation";
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isActive = (path: string) => pathname === path;
@@ -18,6 +19,10 @@ export default function Navbar() {
     clearToken();
     router.push("/login");
   };
+
+  useEffect(() => {
+    setIsAuthenticated(!!getToken());
+  }, [pathname]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -46,9 +51,12 @@ export default function Navbar() {
         <div className="hidden md:flex gap-8 text-sm font-medium">
           {[
             { name: "Scan", path: "/scan" },
+            { name: "Hotspots", path: "/map" },
+            { name: "Market", path: "/marketplace" },
             { name: "Dashboard", path: "/dashboard" },
             { name: "History", path: "/history" },
             { name: "Profile", path: "/profile" },
+            { name: "EcoBot", path: "/chat" },
           ].map((item) => (
             <Link
               key={item.path}
@@ -73,16 +81,29 @@ export default function Navbar() {
           </button>
 
           {open && (
-            <div className="absolute right-0 mt-3 w-52 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 space-y-3 text-sm">
-              <Link href="/settings" className="block hover:opacity-70">
-                Settings
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="block text-red-500 hover:opacity-70"
-              >
-                Logout
-              </button>
+            <div className="absolute right-0 mt-3 w-52 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 space-y-3 text-sm flex flex-col items-start">
+              {isAuthenticated ? (
+                <>
+                  <Link href="/settings" className="block w-full text-left hover:opacity-70">
+                    Settings
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-left text-red-500 hover:opacity-70"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" className="block w-full text-left hover:opacity-70">
+                    Login
+                  </Link>
+                  <Link href="/signup" className="block w-full text-left hover:opacity-70">
+                    Sign Up
+                  </Link>
+                </>
+              )}
             </div>
           )}
         </div>

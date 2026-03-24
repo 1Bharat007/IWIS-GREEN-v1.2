@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { getToken } from "@/lib/session";
+import ProtectedRoute from "@/components/layout/ProtectedRoute";
 
 type Scan = {
   id: string;
@@ -17,6 +19,7 @@ type ProfileData = {
   totalCO2: number;
   streak: number;
   tier: string;
+  greenPoints: number;
 };
 
 export default function Profile() {
@@ -25,6 +28,7 @@ export default function Profile() {
 
   useEffect(() => {
     const load = async () => {
+      if (!getToken()) return;
       try {
         const res = await apiFetch("/waste/history");
         setData(res);
@@ -56,10 +60,35 @@ export default function Profile() {
   ].filter(Boolean);
 
   return (
-    <div className="space-y-10">
-      <h1 className="text-3xl font-semibold">
-        Your Impact Profile
-      </h1>
+    <ProtectedRoute>
+      <div className="space-y-10 max-w-5xl mx-auto">
+        <h1 className="text-4xl font-semibold tracking-tight">
+          Your Impact Profile
+        </h1>
+
+      {/* Eco Wallet */}
+      <div className="rounded-3xl border border-emerald-200 dark:border-emerald-900/50 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-[#0f172a] dark:to-[#1e293b] p-8 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 text-8xl opacity-10">💰</div>
+        <div className="relative z-10">
+          <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide">
+            Green Points Wallet
+          </p>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mt-2">
+            <div>
+              <p className="text-5xl font-bold text-neutral-900 dark:text-white mt-1">
+                {(data.greenPoints || 0).toLocaleString()} <span className="text-2xl font-normal text-emerald-600 dark:text-emerald-500">GP</span>
+              </p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2">Earn points by scanning and tracing waste to MRFs.</p>
+            </div>
+            <button 
+              onClick={() => alert("Reward Partner Ecosystem coming soon! (e.g. Metro Credits, Bill Discounts)")}
+              className="px-6 py-3 bg-neutral-900 text-white rounded-xl dark:bg-white dark:text-black font-medium shadow-md hover:scale-105 transition-transform"
+            >
+              Redeem Rewards
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Stats */}
       <div className="grid md:grid-cols-4 gap-6">
@@ -125,8 +154,9 @@ export default function Profile() {
             ))}
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </ProtectedRoute>
   );
 }
 

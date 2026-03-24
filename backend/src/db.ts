@@ -33,7 +33,35 @@ export const initDB = async () => {
       imageHash TEXT,
       FOREIGN KEY(userId) REFERENCES users(id)
     );
+
+    CREATE TABLE IF NOT EXISTS listings (
+      id TEXT PRIMARY KEY,
+      batchId TEXT UNIQUE,
+      userId TEXT,
+      status TEXT DEFAULT 'Open',
+      priceRange TEXT,
+      createdAt TEXT,
+      FOREIGN KEY(batchId) REFERENCES batches(id),
+      FOREIGN KEY(userId) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS bids (
+      id TEXT PRIMARY KEY,
+      listingId TEXT,
+      recyclerId TEXT,
+      offerAmount REAL,
+      status TEXT DEFAULT 'Pending',
+      createdAt TEXT,
+      FOREIGN KEY(listingId) REFERENCES listings(id),
+      FOREIGN KEY(recyclerId) REFERENCES users(id)
+    );
   `);
+
+  // Idempotently add geographic columns if they don't exist
+  try { await dbInstance.run("ALTER TABLE batches ADD COLUMN lat REAL"); } catch (e) {}
+  try { await dbInstance.run("ALTER TABLE batches ADD COLUMN lng REAL"); } catch (e) {}
+  // Idempotently add Green Points Wallet column
+  try { await dbInstance.run("ALTER TABLE users ADD COLUMN greenPoints REAL DEFAULT 0"); } catch (e) {}
 
   return dbInstance;
 };

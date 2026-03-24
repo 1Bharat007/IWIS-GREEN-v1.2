@@ -9,7 +9,7 @@ import { getTier } from "../services/tier.service";
 ================================= */
 export const scanWaste = async (req: any, res: Response) => {
   try {
-    const { image } = req.body;
+    const { image, lat, lng } = req.body;
     if (!image) {
       return res.status(400).json({ message: "Image required" });
     }
@@ -28,6 +28,7 @@ export const scanWaste = async (req: any, res: Response) => {
 
     const newScans = (user.totalScans || 0) + 1;
     const newCO2 = (user.totalCO2 || 0) + result.co2;
+    const newPoints = (user.greenPoints || 0) + 10; // +10 Points per Scan
 
     const today = new Date().toISOString().split("T")[0];
     const lastDate = user.lastScanDate
@@ -54,15 +55,15 @@ export const scanWaste = async (req: any, res: Response) => {
 
     await db.run(
       `UPDATE users
-       SET totalScans = ?, totalCO2 = ?, streak = ?, lastScanDate = ?, tier = ?
+       SET totalScans = ?, totalCO2 = ?, streak = ?, lastScanDate = ?, tier = ?, greenPoints = ?
        WHERE id = ?`,
-      [newScans, newCO2, newStreak, today, newTier, req.user.id]
+      [newScans, newCO2, newStreak, today, newTier, newPoints, req.user.id]
     );
 
     await db.run(
       `INSERT INTO batches
-       (id, userId, category, confidence, co2, timestamp, imageHash)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (id, userId, category, confidence, co2, timestamp, imageHash, lat, lng)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         uuidv4(),
         req.user.id,
@@ -71,6 +72,8 @@ export const scanWaste = async (req: any, res: Response) => {
         result.co2,
         new Date().toISOString(),
         result.imageHash,
+        lat || null,
+        lng || null
       ]
     );
 
@@ -113,7 +116,7 @@ export const getHistory = async (req: any, res: Response) => {
     );
 
     const user = await db.get(
-      `SELECT totalScans, totalCO2, streak, tier
+      `SELECT totalScans, totalCO2, streak, tier, greenPoints
        FROM users
        WHERE id = ?`,
       req.user.id
@@ -125,6 +128,7 @@ export const getHistory = async (req: any, res: Response) => {
       totalCO2: user?.totalCO2 || 0,
       streak: user?.streak || 0,
       tier: user?.tier || "Getting Started",
+      greenPoints: user?.greenPoints || 0,
     });
   } catch (err) {
     console.error(err);
@@ -181,5 +185,24 @@ export const getStats = async (req: any, res: Response) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Stats fetch failed" });
+  }
+};
+
+/* ===============================
+   HOTSPOTS MAP
+================================= */
+export const getHotspots = async (_req: any, res: Response) => {
+  try {
+    const db = await getDB();
+    const hotspots = await db.all(`
+      SELECT id, category, lat, lng, timestamp, co2
+      FROM batches 
+      WHERE lat IS NOT NULL AND lng IS NOT NULL
+      ORDER BY timestamp DESC
+    `);
+    res.json(hotspots);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Hotspot fetch failed" });
   }
 };

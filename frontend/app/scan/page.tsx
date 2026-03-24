@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { apiFetch } from "@/lib/api";
+import ProtectedRoute from "@/components/layout/ProtectedRoute";
 
 export default function ScanPage() {
   const [result, setResult] = useState<any>(null);
@@ -16,13 +17,28 @@ export default function ScanPage() {
 
       const base64 = reader.result as string;
 
+      // Extract GPS before mapping
+      let lat = null;
+      let lng = null;
+      try {
+        if ("geolocation" in navigator) {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+          });
+          lat = position.coords.latitude;
+          lng = position.coords.longitude;
+        }
+      } catch (err) {
+        console.warn("Geolocation blocked or timed out, continuing without coords.");
+      }
+
       // Simulated AI processing delay
       await new Promise((res) => setTimeout(res, 2000));
 
       try {
         const data = await apiFetch("/waste/scan", {
           method: "POST",
-          body: JSON.stringify({ image: base64 }),
+          body: JSON.stringify({ image: base64, lat, lng }),
         });
 
         setResult(data);
@@ -37,8 +53,9 @@ export default function ScanPage() {
   };
 
   return (
-    <div className="max-w-xl mx-auto space-y-8">
-      <h1 className="text-3xl font-semibold">Smart Waste Scanner</h1>
+    <ProtectedRoute>
+      <div className="max-w-xl mx-auto space-y-8">
+        <h1 className="text-3xl font-semibold">Smart Waste Scanner</h1>
 
       <p className="text-sm text-[var(--muted)]">
         Upload an image of waste material. Our AI analyzes category,
@@ -89,8 +106,8 @@ export default function ScanPage() {
       💡 {result.smartTip}
     </div>
   </div>
-)}
-
-    </div>
+      )}
+      </div>
+    </ProtectedRoute>
   );
 }
