@@ -90,7 +90,7 @@ export default function Home() {
               desc: "24/7 intelligent LLM chatbot trained on local waste management policies and segregation guidelines."
             }
           ].map((feature, i) => (
-            <div key={i} className="group relative p-8 rounded-3xl bg-white dark:bg-[#1E293B] border border-neutral-200 dark:border-neutral-800 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-2 animate-fadeIn" style={{ animationDelay: \`\${0.4 + i * 0.1}s\` }}>
+            <div key={i} className="group relative p-8 rounded-3xl bg-white dark:bg-[#1E293B] border border-neutral-200 dark:border-neutral-800 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-2 animate-fadeIn" style={{ animationDelay: `${0.4 + i * 0.1}s` }}>
               <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-5 transition-opacity rounded-3xl" />
               <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-2xl mb-6 shadow-inner group-hover:scale-110 transition-transform duration-300">
                 {feature.icon}
