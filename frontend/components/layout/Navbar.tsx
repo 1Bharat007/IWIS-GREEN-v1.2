@@ -51,6 +51,7 @@ export default function Navbar() {
         <div className="hidden md:flex gap-8 text-sm font-medium">
           {[
             { name: "Scan", path: "/scan" },
+            { name: "Leaderboard", path: "/leaderboard" },
             { name: "Hotspots", path: "/map" },
             { name: "Market", path: "/marketplace" },
             { name: "Dashboard", path: "/dashboard" },

@@ -1,5 +1,5 @@
 import { setToken } from "./session";
-const AUTH_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL}/api/auth`;
+const AUTH_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/auth`;
 type AuthPayload = {
   email: string;
   password: string;
