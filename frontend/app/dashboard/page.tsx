@@ -166,7 +166,7 @@ export default function DashboardPage() {
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <RechartsTooltip formatter={(val: number) => `${val.toFixed(2)} kg`} />
+                    <RechartsTooltip formatter={(val: any) => typeof val === 'number' ? `${val.toFixed(2)} kg` : val} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -190,7 +190,7 @@ export default function DashboardPage() {
                   <BarChart data={stats} layout="vertical" margin={{ left: 10 }}>
                     <XAxis type="number" hide />
                     <YAxis dataKey="category" type="category" axisLine={false} tickLine={false} width={80} />
-                    <RechartsTooltip cursor={{fill: 'transparent'}} formatter={(val: number) => `${val.toFixed(2)} kg`} />
+                    <RechartsTooltip cursor={{fill: 'transparent'}} formatter={(val: any) => typeof val === 'number' ? `${val.toFixed(2)} kg` : val} />
                     <Bar dataKey="totalCO2" radius={[0, 4, 4, 0]}>
                       {stats.map((entry, index) => (
                         <Cell key={`cell-bar-${index}`} fill={COLORS[index % COLORS.length]} />

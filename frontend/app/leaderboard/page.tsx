@@ -109,7 +109,7 @@ export default function LeaderboardPage() {
                   <div 
                     key={index} 
                     className="px-6 py-4 grid grid-cols-12 items-center hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors animate-fadeIn"
-                    style={{ animationDelay: \`\${0.1 * index}s\` }}
+                    style={{ animationDelay: `${0.1 * index}s` }}
                   >
                     <div className="col-span-2 text-center font-medium text-neutral-400">
                       #{index + 1}
