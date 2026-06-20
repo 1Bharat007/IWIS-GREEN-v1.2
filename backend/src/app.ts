@@ -12,7 +12,19 @@ initDB();
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: (origin, callback) => {
+      const allowed = [
+        "http://localhost:3000",
+        process.env.FRONTEND_URL, // e.g. https://iwis-green-v103.vercel.app
+      ].filter(Boolean);
+
+      // Allow requests with no origin (mobile apps, curl, Postman)
+      if (!origin || allowed.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+      }
+    },
     credentials: true,
   })
 );

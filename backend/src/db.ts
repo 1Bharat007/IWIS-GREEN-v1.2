@@ -1,11 +1,17 @@
 import sqlite3 from "sqlite3";
 import { open } from "sqlite";
+import path from "path";
 
 let dbInstance: any;
 
+// Use /tmp on production servers (Render, Railway, etc.), local path in dev
+const DB_PATH = process.env.NODE_ENV === "production"
+  ? "/tmp/iwis.db"
+  : path.resolve("./iwis.db");
+
 export const initDB = async () => {
   dbInstance = await open({
-    filename: "./iwis.db",
+    filename: DB_PATH,
     driver: sqlite3.Database,
   });
 

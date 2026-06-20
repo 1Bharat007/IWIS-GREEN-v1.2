@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: iwis-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GEMINI_API_KEY
+        sync: false   # You'll enter this in Render dashboard
+      - key: FRONTEND_URL
+        sync: false   # You'll enter your Vercel URL here
+      - key: JWT_SECRET
+        generateValue: true  # Render auto-generates a secure random value
