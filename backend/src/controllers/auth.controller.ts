@@ -113,9 +113,9 @@ export const forgotPassword = async (req: Request, res: Response) => {
     // Build the reset link
     const frontendUrl =
       process.env.FRONTEND_URL ||
-      process.env.NODE_ENV === "production"
+      (process.env.NODE_ENV === "production"
         ? "https://iwis-green-v103.vercel.app"
-        : "http://localhost:3000";
+        : "http://localhost:3000");
 
     const resetLink = `${frontendUrl}/reset-password?token=${token}`;
 

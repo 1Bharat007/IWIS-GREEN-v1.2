@@ -1,12 +1,15 @@
 import { Router } from "express";
-import { verifyToken } from "../middleware/auth.middleware";
-import { requireAdmin } from "../middleware/role.middleware";
-import { initDB } from "../config/db";
+import { protect } from "../middleware/auth.middleware";
+import { getDB } from "../db";
 
 const router = Router();
 
-router.get("/stats", verifyToken, requireAdmin, async (req, res) => {
-  const db = await initDB();
+router.get("/stats", protect, async (req: any, res: any) => {
+  if (req.user?.role !== "admin") {
+    return res.status(403).json({ message: "Admin only" });
+  }
+
+  const db = await getDB();
 
   const users = await db.get("SELECT COUNT(*) as count FROM users");
   const scans = await db.get("SELECT COUNT(*) as count FROM batches");

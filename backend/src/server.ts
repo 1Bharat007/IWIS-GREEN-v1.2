@@ -2,7 +2,7 @@ import "dotenv/config";
 import app from "./app";
 import { initDB } from "./db";
 
-const PORT = 5000;
+const PORT = Number(process.env.PORT) || 5000;
 
 const startServer = async () => {
   try {
