@@ -15,7 +15,8 @@ app.use(
     origin: (origin, callback) => {
       const allowed = [
         "http://localhost:3000",
-        process.env.FRONTEND_URL, // e.g. https://iwis-green-v103.vercel.app
+        "https://iwis-green-v103.vercel.app", // production Vercel URL
+        process.env.FRONTEND_URL,             // override via env var if needed
       ].filter(Boolean);
 
       // Allow requests with no origin (mobile apps, curl, Postman)

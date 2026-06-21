@@ -17,12 +17,16 @@ export async function apiFetch(endpoint: string, options: any = {}) {
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text || "Request failed");
+      throw new Error(text || `Request failed with status ${response.status}`);
     }
 
     return await response.json();
-  } catch (error) {
+  } catch (error: any) {
     console.error("API ERROR:", error);
-    throw new Error("Failed to connect to backend");
+    // Re-throw meaningful errors (e.g., from !response.ok above)
+    if (error?.message && error.message !== "Failed to fetch") {
+      throw error;
+    }
+    throw new Error("Failed to connect to backend. Please check your connection or try again later.");
   }
 }
