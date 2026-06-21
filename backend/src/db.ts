@@ -69,6 +69,17 @@ export const initDB = async () => {
   // Idempotently add Green Points Wallet column
   try { await dbInstance.run("ALTER TABLE users ADD COLUMN greenPoints REAL DEFAULT 0"); } catch (e) {}
 
+  // Password reset tokens table
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS reset_tokens (
+      token TEXT PRIMARY KEY,
+      userId TEXT NOT NULL,
+      expiresAt TEXT NOT NULL,
+      FOREIGN KEY(userId) REFERENCES users(id)
+    );
+  `);
+
+
   return dbInstance;
 };
 
