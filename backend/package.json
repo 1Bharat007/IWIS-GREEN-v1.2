@@ -26,9 +26,7 @@
     "nodemailer": "^9.0.1",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
-    "uuid": "^13.0.0"
-  },
-  "devDependencies": {
+    "uuid": "^13.0.0",
     "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
