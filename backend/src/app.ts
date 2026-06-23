@@ -13,17 +13,38 @@ initDB();
 app.use(
   cors({
     origin: (origin, callback) => {
-      const allowed = [
-        "http://localhost:3000",
-        "https://iwis-green-v103.vercel.app", // production Vercel URL
-        process.env.FRONTEND_URL,             // override via env var if needed
-      ].filter(Boolean);
+      // Allow requests with no origin (like mobile apps, curl, Postman)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
 
-      // Allow requests with no origin (mobile apps, curl, Postman)
-      if (!origin || allowed.includes(origin)) {
+      const allowedOrigins = [
+        "http://localhost:3000",
+        "https://iwis-green-v103.vercel.app",
+      ];
+
+      if (process.env.FRONTEND_URL) {
+        allowedOrigins.push(process.env.FRONTEND_URL);
+      }
+
+      // Normalize all allowed origins by removing trailing slashes
+      const normalizedAllowed = allowedOrigins
+        .filter(Boolean)
+        .map((url) => url.replace(/\/$/, ""));
+
+      const normalizedOrigin = origin.replace(/\/$/, "");
+
+      const isAllowed =
+        normalizedAllowed.includes(normalizedOrigin) ||
+        /^https:\/\/iwis-green.*\.vercel\.app$/.test(normalizedOrigin) ||
+        /^http:\/\/localhost:\d+$/.test(normalizedOrigin);
+
+      if (isAllowed) {
         callback(null, true);
       } else {
-        callback(new Error(`CORS: origin ${origin} not allowed`));
+        // Set to false rather than throwing a 500 error on the server
+        callback(null, false);
       }
     },
     credentials: true,
