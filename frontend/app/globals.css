@@ -1,55 +1,95 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Design Tokens ──────────────────────────────────────────── */
 :root {
-  --bg: #f5f5f7;
-  --card: #ffffff;
-  --text: #1d1d1f;
-  --muted: #6e6e73;
-  --border: #e5e5ea;
+  --bg:              #fafafa;
+  --surface:         #ffffff;
+  --surface-raised:  #f4f4f5;
+  --border:          #e4e4e7;
+  --border-strong:   #d4d4d8;
+  --text-primary:    #09090b;
+  --text-secondary:  #71717a;
+  --text-tertiary:   #a1a1aa;
+  --accent:          #16a34a;
+  --accent-hover:    #15803d;
+  --accent-subtle:   #f0fdf4;
+  --accent-text:     #15803d;
+  --accent-border:   #bbf7d0;
+  --destructive:     #dc2626;
+  --destructive-bg:  #fef2f2;
+  --destructive-border: #fecaca;
+  --warning:         #d97706;
+  --warning-bg:      #fffbeb;
+  --info:            #2563eb;
+  --info-bg:         #eff6ff;
 }
 
 .dark {
-  --bg: #111214;
-  --card: #1c1c1e;
-  --text: #f5f5f7;
-  --muted: #a1a1aa;
-  --border: #2c2c2e;
+  --bg:              #09090b;
+  --surface:         #111113;
+  --surface-raised:  #18181b;
+  --border:          #27272a;
+  --border-strong:   #3f3f46;
+  --text-primary:    #fafafa;
+  --text-secondary:  #a1a1aa;
+  --text-tertiary:   #71717a;
+  --accent:          #16a34a;
+  --accent-hover:    #22c55e;
+  --accent-subtle:   #052e16;
+  --accent-text:     #4ade80;
+  --accent-border:   #166534;
+  --destructive:     #ef4444;
+  --destructive-bg:  #1c0606;
+  --destructive-border: #7f1d1d;
+  --warning:         #f59e0b;
+  --warning-bg:      #1c1409;
+  --info:            #3b82f6;
+  --info-bg:         #0c1a2e;
 }
 
-html,
-body {
+/* ─── Base ───────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+html, body {
   background: var(--bg);
-  color: var(--text);
-  transition: background 0.3s ease, color 0.3s ease;
-}
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  color: var(--text-primary);
 }
 
-@keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+/* ─── Animations ─────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes scanline {
-  0% { top: 0; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
+  0%   { top: 0;    opacity: 0; }
+  10%  {            opacity: 1; }
+  90%  {            opacity: 1; }
   100% { top: 100%; opacity: 0; }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.5s ease forwards;
-}
+.animate-fadeIn   { animation: fadeIn   0.18s ease forwards; }
+.animate-slideDown{ animation: slideDown 0.15s ease forwards; }
+.animate-scanline { animation: scanline  2s cubic-bezier(0.4,0,0.2,1) infinite; }
 
-.animate-float {
-  animation: float 4s ease-in-out infinite;
-}
-
-.animate-scanline {
-  animation: scanline 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
+/* ─── Scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 9999px; }

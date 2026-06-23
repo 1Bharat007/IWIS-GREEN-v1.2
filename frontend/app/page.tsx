@@ -1,108 +1,173 @@
 import Link from "next/link";
+import {
+  ScanIcon, LeafIcon, ShoppingIcon, MapPinIcon, TrophyIcon, BotIcon,
+  ArrowRightIcon, BarChartIcon, CheckIcon,
+} from "@/components/ui/Icons";
+
+const FEATURES = [
+  {
+    Icon: ScanIcon,
+    title: "Computer Vision AI",
+    desc: "Multi-class waste classification — plastic, organic, metal, glass — with confidence scoring via Gemini Vision.",
+  },
+  {
+    Icon: LeafIcon,
+    title: "Scope 3 Accounting",
+    desc: "Calculate avoided CO₂ per batch. Aligned with India's NDC commitments and BRSR reporting standards.",
+  },
+  {
+    Icon: ShoppingIcon,
+    title: "Circular Marketplace",
+    desc: "Connects citizens to Material Recovery Facilities via a transparent bid-based reverse supply chain.",
+  },
+  {
+    Icon: MapPinIcon,
+    title: "Geospatial Heatmaps",
+    desc: "City-level tracking of illegal dumping hotspots to optimize municipal dispatch routes and interventions.",
+  },
+  {
+    Icon: TrophyIcon,
+    title: "Gamified Incentives",
+    desc: "Green Points, weekly streaks, and tier progression drive measurable long-term behavioral change.",
+  },
+  {
+    Icon: BotIcon,
+    title: "EcoBot Assistant",
+    desc: "24/7 LLM assistant trained on India's waste management policies, segregation rules, and IWIS platform.",
+  },
+];
+
+const STATS = [
+  { value: "62M", label: "Tonnes of waste generated annually in India" },
+  { value: "2070", label: "India's Net Zero target year" },
+  { value: "1500+", label: "Scans classified by the AI engine" },
+];
 
 export default function Home() {
   return (
-    <div className="relative overflow-hidden w-full max-w-full">
-      {/* Background Decor */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-[500px] bg-gradient-to-b from-emerald-500/10 to-transparent blur-3xl pointer-events-none rounded-full" />
-      
-      {/* Hero Section */}
-      <div className="max-w-6xl mx-auto pt-32 pb-24 text-center space-y-10 px-4 relative z-10">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium animate-fadeIn">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          Tackling India's 62M Tonne Waste Crisis
+    <div className="animate-fadeIn">
+
+      {/* ── Hero ─────────────────────────────────────────────── */}
+      <section className="pt-16 pb-20 border-b border-[var(--border)]">
+        <div className="max-w-3xl">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md border border-[var(--border)] bg-[var(--surface-raised)] text-xs font-medium text-[var(--text-secondary)] mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
+            India Net Zero 2070 · BRSR Aligned · Scope 3 Reporting
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl font-semibold text-[var(--text-primary)] leading-tight tracking-tight mb-5">
+            Intelligent Waste<br />Information System
+          </h1>
+
+          <p className="text-lg text-[var(--text-secondary)] leading-relaxed max-w-xl mb-8">
+            AI-powered waste management for governments, municipalities, ESG teams, and recyclers.
+            From household scanning to city-level carbon accounting — in one platform.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/scan"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg)] rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              Open AI Scanner
+              <ArrowRightIcon size={13} />
+            </Link>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 px-4 py-2 border border-[var(--border)] text-[var(--text-secondary)] rounded-lg text-sm font-medium hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
+            >
+              View Dashboard
+            </Link>
+          </div>
         </div>
+      </section>
 
-        <h1 className="text-6xl md:text-8xl font-bold tracking-tight animate-fadeIn" style={{ animationDelay: '0.1s' }}>
-          Intelligent <br className="hidden md:block" />
-          <span className="bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 bg-clip-text text-transparent">
-            Waste Management
-          </span>
-        </h1>
-
-        <p className="text-xl md:text-2xl text-neutral-600 dark:text-neutral-400 max-w-3xl mx-auto leading-relaxed animate-fadeIn" style={{ animationDelay: '0.2s' }}>
-          A Next-Generation AI & IoT Ecosystem accelerating India’s Net Zero 2070 Mission through gamified carbon accounting and computer vision.
-        </p>
-
-        <div className="flex flex-col sm:flex-row justify-center gap-4 pt-8 animate-fadeIn" style={{ animationDelay: '0.3s' }}>
-          <Link
-            href="/scan"
-            className="group relative px-8 py-4 bg-emerald-600 text-white rounded-2xl font-medium hover:bg-emerald-500 transition-all shadow-lg shadow-emerald-600/25 hover:shadow-emerald-500/40 hover:-translate-y-1"
-          >
-            <span className="flex items-center justify-center gap-2">
-              Launch AI Scanner
-              <span className="transition-transform group-hover:translate-x-1">→</span>
-            </span>
-          </Link>
-
-          <Link
-            href="/dashboard"
-            className="px-8 py-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl font-medium hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all shadow-sm hover:-translate-y-1"
-          >
-            View Dashboard
-          </Link>
-        </div>
-      </div>
-
-      {/* Real-world Impact Grid */}
-      <div className="max-w-6xl mx-auto px-4 py-24 relative z-10">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Core Technology</h2>
-          <p className="text-neutral-500 max-w-2xl mx-auto">Built to solve real-world problems at scale, from the individual household to city-level administration.</p>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {[
-            {
-              icon: "📸",
-              title: "Computer Vision AI",
-              color: "from-emerald-500 to-teal-400",
-              desc: "Instant multi-class classification determining organic, plastic, metal & glass composition with confidence scores."
-            },
-            {
-              icon: "🌱",
-              title: "Scope 3 Accounting",
-              color: "from-blue-500 to-cyan-400",
-              desc: "Calculate avoided CO₂ emissions per batch, aligning with India's NDC commitments and BRSR reporting."
-            },
-            {
-              icon: "♻️",
-              title: "Circular Marketplace",
-              color: "from-amber-500 to-orange-400",
-              desc: "Connects users to MRF operators directly to create a transparent, zero-waste reverse supply chain."
-            },
-            {
-              icon: "🗺️",
-              title: "Geospatial Heatmaps",
-              color: "from-purple-500 to-indigo-400",
-              desc: "City-level simulation tracking illegal dumping hotspots to optimize dispatch routes and interventions."
-            },
-            {
-              icon: "🏆",
-              title: "Gamified Incentives",
-              color: "from-rose-500 to-pink-400",
-              desc: "Dynamic Leaderboards and 'Green Points' drive long-term community behavioral changes."
-            },
-            {
-              icon: "🤖",
-              title: "EcoBot Assistant",
-              color: "from-sky-500 to-blue-400",
-              desc: "24/7 intelligent LLM chatbot trained on local waste management policies and segregation guidelines."
-            }
-          ].map((feature, i) => (
-            <div key={i} className="group relative p-8 rounded-3xl bg-white dark:bg-[#1E293B] border border-neutral-200 dark:border-neutral-800 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-2 animate-fadeIn" style={{ animationDelay: `${0.4 + i * 0.1}s` }}>
-              <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-5 transition-opacity rounded-3xl" />
-              <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-2xl mb-6 shadow-inner group-hover:scale-110 transition-transform duration-300">
-                {feature.icon}
-              </div>
-              <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
-              <p className="text-neutral-500 dark:text-neutral-400 text-sm leading-relaxed">
-                {feature.desc}
-              </p>
+      {/* ── Stats row ────────────────────────────────────────── */}
+      <section className="py-10 border-b border-[var(--border)]">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-[var(--border)]">
+          {STATS.map(({ value, label }) => (
+            <div key={value} className="px-0 sm:px-8 py-4 sm:py-0 first:pl-0 last:pr-0">
+              <p className="text-2xl font-semibold text-[var(--text-primary)] mb-0.5">{value}</p>
+              <p className="text-sm text-[var(--text-secondary)]">{label}</p>
             </div>
           ))}
         </div>
-      </div>
+      </section>
+
+      {/* ── Core Technology ──────────────────────────────────── */}
+      <section className="py-16">
+        <div className="mb-10">
+          <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
+            Platform
+          </p>
+          <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
+            Core technology
+          </h2>
+          <p className="mt-2 text-sm text-[var(--text-secondary)] max-w-lg">
+            Built for real-world deployment at scale — from individual households to city-level administration.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-px bg-[var(--border)] border border-[var(--border)] rounded-xl overflow-hidden">
+          {FEATURES.map(({ Icon, title, desc }) => (
+            <div
+              key={title}
+              className="bg-[var(--surface)] p-6 hover:bg-[var(--surface-raised)] transition-colors"
+            >
+              <div className="w-8 h-8 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-secondary)] mb-4">
+                <Icon size={14} />
+              </div>
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1.5">{title}</h3>
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── CTA banner ───────────────────────────────────────── */}
+      <section className="py-8 px-6 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+        <div>
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">
+            Ready to track your environmental impact?
+          </h3>
+          <p className="text-sm text-[var(--text-secondary)]">
+            Create an account to start scanning, earning Green Points, and generating BRSR-compliant ESG reports.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <Link
+            href="/signup"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg)] rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            Get started
+            <ArrowRightIcon size={13} />
+          </Link>
+          <Link
+            href="/login"
+            className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+          >
+            Sign in
+          </Link>
+        </div>
+      </section>
+
+      {/* ── Compliance row ───────────────────────────────────── */}
+      <section className="pb-16">
+        <div className="flex flex-wrap items-center gap-6 text-xs text-[var(--text-tertiary)]">
+          {[
+            "BRSR Reporting",
+            "India NDC Aligned",
+            "Scope 3 Compliant",
+            "WCAG 2.1 AA",
+            "Open Source",
+          ].map((badge) => (
+            <span key={badge} className="flex items-center gap-1.5">
+              <CheckIcon size={11} className="text-[var(--accent)]" />
+              {badge}
+            </span>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

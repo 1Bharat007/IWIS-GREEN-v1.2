@@ -4,17 +4,12 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { getToken } from "@/lib/session";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
+import { DownloadIcon, BarChartIcon, TrendUpIcon, LeafIcon, CO2Icon } from "@/components/ui/Icons";
 import {
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
+  PieChart, Pie, Cell,
+  BarChart, Bar, XAxis, YAxis,
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  Legend
 } from "recharts";
 
 interface WeeklyStat {
@@ -23,10 +18,11 @@ interface WeeklyStat {
   totalCO2: number;
 }
 
-const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#64748b"];
+// Semantic, accessible color palette — not random
+const CHART_COLORS = ["#16a34a", "#2563eb", "#d97706", "#dc2626", "#7c3aed", "#64748b"];
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<WeeklyStat[]>([]);
+  const [stats,   setStats]   = useState<WeeklyStat[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,113 +40,145 @@ export default function DashboardPage() {
     load();
   }, []);
 
-  const totalCO2 = stats.reduce((acc, s) => acc + (s.totalCO2 || 0), 0);
-  const totalScans = stats.reduce((acc, s) => acc + (s.count || 0), 0);
-
-  // Equivalencies based on standard EPA metrics
-  // 1 kg CO2 = ~2.48 miles driven by average gasoline-powered passenger vehicle (403g CO2/mile)
-  const equivalentMiles = (totalCO2 * 2.48).toFixed(1);
-  // ~21 kg CO2 absorbed per tree per year
-  const equivalentTrees = (totalCO2 / 21).toFixed(2);
-  // ~0.113 gallons of gasoline consumed per 1 kg CO2 
-  const equivalentGas = (totalCO2 * 0.113).toFixed(2);
+  const totalCO2   = stats.reduce((a, s) => a + (s.totalCO2 || 0), 0);
+  const totalScans = stats.reduce((a, s) => a + (s.count    || 0), 0);
+  const treesEq    = (totalCO2 / 21).toFixed(2);
+  const milesEq    = (totalCO2 * 2.48).toFixed(1);
+  const gallonsEq  = (totalCO2 * 0.113).toFixed(2);
 
   const handleExportCSV = () => {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Category,Total Scans,Total CO2 Avoided (kg)\n";
-    
-    stats.forEach(stat => {
-      csvContent += `${stat.category},${stat.count},${stat.totalCO2.toFixed(3)}\n`;
-    });
-    
-    csvContent += `\nTOTAL,${totalScans},${totalCO2.toFixed(3)}`;
-    csvContent += `\n\nEquivalency Metrics`;
-    csvContent += `\nTree-Years of Absorption,${equivalentTrees}`;
-    csvContent += `\nMiles Driven Avoided,${equivalentMiles}`;
-
-    const encodedUri = encodeURI(csvContent);
+    let csv = "data:text/csv;charset=utf-8,";
+    csv += "Category,Total Scans,Total CO2 Avoided (kg)\n";
+    stats.forEach((s) => { csv += `${s.category},${s.count},${s.totalCO2.toFixed(3)}\n`; });
+    csv += `\nTOTAL,${totalScans},${totalCO2.toFixed(3)}`;
+    csv += `\n\nEquivalency Metrics\nTree-Years of Absorption,${treesEq}\nMiles Driven Avoided,${milesEq}`;
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `IWIS_BRSR_ESG_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("href", encodeURI(csv));
+    link.setAttribute("download", `IWIS_BRSR_ESG_Report_${new Date().toISOString().split("T")[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
+  const val = (v: string | number) =>
+    loading ? (
+      <span className="inline-block w-16 h-5 bg-[var(--surface-raised)] rounded animate-pulse" />
+    ) : v;
+
   return (
     <ProtectedRoute>
-      <div className="space-y-8 max-w-7xl mx-auto">
-        <div className="flex justify-between items-end">
+      <div className="space-y-6 animate-fadeIn">
+
+        {/* ── Page header ────────────────────────────────────── */}
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] pb-5">
           <div>
-            <h1 className="text-3xl font-semibold text-neutral-900 dark:text-neutral-100">
+            <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
+              ESG Reporting
+            </p>
+            <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
               Carbon Accounting
             </h1>
-            <p className="text-neutral-500 mt-2">Your ESG metrics and Scope 3 diversion tracking.</p>
+            <p className="text-sm text-[var(--text-secondary)] mt-1">
+              Scope 3 diversion metrics and material composition breakdown.
+            </p>
           </div>
-          <button 
+          <button
             onClick={handleExportCSV}
-            className="bg-black text-white dark:bg-white dark:text-black hover:opacity-80 px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors shrink-0"
           >
-            <span>⬇️</span> BRSR / SEBI Export
+            <DownloadIcon size={13} />
+            BRSR / SEBI Export
           </button>
         </div>
 
-        {/* Top Stats */}
-        <div className="grid gap-6 md:grid-cols-4">
-          <div className="col-span-2 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-[#1E293B]">
-            <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
-              Net CO₂ Diversion
-            </p>
-            <p className="mt-2 text-4xl font-semibold text-neutral-900 dark:text-white">
-              {loading ? "..." : totalCO2.toFixed(2)} <span className="text-xl text-neutral-400 font-normal">kg CO₂e</span>
-            </p>
-          </div>
+        {/* ── KPI grid ───────────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            {
+              label: "Net CO₂ Diversion",
+              value: loading ? "—" : `${totalCO2.toFixed(2)} kg`,
+              sub: "CO₂e avoided",
+              Icon: CO2Icon,
+              accent: true,
+            },
+            {
+              label: "Total Scans",
+              value: loading ? "—" : totalScans,
+              sub: "waste items classified",
+              Icon: BarChartIcon,
+              accent: false,
+            },
+            {
+              label: "Tree Equivalent",
+              value: loading ? "—" : treesEq,
+              sub: "tree-years of absorption",
+              Icon: LeafIcon,
+              accent: false,
+            },
+            {
+              label: "Miles Avoided",
+              value: loading ? "—" : milesEq,
+              sub: "miles of driving avoided",
+              Icon: TrendUpIcon,
+              accent: false,
+            },
+          ].map(({ label, value, sub, Icon, accent }) => (
+            <div
+              key={label}
+              className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)]"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <p className="text-xs font-medium text-[var(--text-secondary)]">{label}</p>
+                <span className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                  accent
+                    ? "bg-[var(--accent-subtle)] text-[var(--accent-text)]"
+                    : "bg-[var(--surface-raised)] text-[var(--text-tertiary)]"
+                }`}>
+                  <Icon size={12} />
+                </span>
+              </div>
+              <p className={`text-2xl font-semibold mb-0.5 ${
+                accent ? "text-[var(--accent-text)]" : "text-[var(--text-primary)]"
+              }`}>
+                {loading ? (
+                  <span className="inline-block w-20 h-6 bg-[var(--surface-raised)] rounded animate-pulse" />
+                ) : value}
+              </p>
+              <p className="text-xs text-[var(--text-tertiary)]">{sub}</p>
+            </div>
+          ))}
+        </div>
 
-          <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-[#1E293B]">
-            <p className="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">
-              Total Scans
-            </p>
-            <p className="mt-2 text-4xl font-semibold text-neutral-900 dark:text-white">
-              {loading ? "..." : totalScans}
-            </p>
+        {/* ── Equivalency row ────────────────────────────────── */}
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+            <span className="text-sm text-[var(--text-secondary)]">Fuel saved</span>
+            <span className="text-sm font-semibold text-[var(--text-primary)]">
+              {val(`${gallonsEq} gallons`)}
+            </span>
           </div>
-          
-          <div className="rounded-2xl border border-neutral-200 bg-emerald-50 p-6 dark:border-neutral-800 dark:bg-emerald-900/10">
-            <p className="text-sm font-medium text-emerald-800 dark:text-emerald-500 uppercase tracking-wide">
-              Trees Equivalent
-            </p>
-            <p className="mt-2 text-4xl font-semibold text-emerald-900 dark:text-emerald-400">
-              🌲 {loading ? "..." : equivalentTrees}
-            </p>
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+            <span className="text-sm text-[var(--text-secondary)]">Driving emissions avoided</span>
+            <span className="text-sm font-semibold text-[var(--text-primary)]">
+              {val(`${milesEq} mi`)}
+            </span>
           </div>
         </div>
 
-        {/* Equivalencies Section */}
-        <div className="grid md:grid-cols-2 gap-6">
-           <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 flex justify-between items-center text-sm text-neutral-600 dark:text-neutral-400">
-              <span>🚗 Emissions Avoided</span>
-              <span className="font-semibold text-neutral-900 dark:text-white">{equivalentMiles} miles driven</span>
-           </div>
-           <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-neutral-900 flex justify-between items-center text-sm text-neutral-600 dark:text-neutral-400">
-              <span>⛽ Fuel Saved</span>
-              <span className="font-semibold text-neutral-900 dark:text-white">{equivalentGas} gallons</span>
-           </div>
-        </div>
-
-        {/* Charts Section */}
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Pie Chart: Composition */}
-          <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-[#1E293B]">
-            <h2 className="mb-6 text-lg font-medium text-neutral-900 dark:text-white">
-              Material Footprint
-            </h2>
-
+        {/* ── Charts ─────────────────────────────────────────── */}
+        <div className="grid md:grid-cols-2 gap-4">
+          {/* Pie */}
+          <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+            <div className="mb-4">
+              <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-0.5">Composition</p>
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Material Footprint</h2>
+            </div>
             {stats.length === 0 ? (
-              <div className="h-64 flex items-center justify-center text-sm text-neutral-500">
-                No data available.
+              <div className="h-56 flex items-center justify-center text-sm text-[var(--text-tertiary)]">
+                No scan data yet.
               </div>
             ) : (
-              <div className="h-64 w-full">
+              <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -159,41 +187,66 @@ export default function DashboardPage() {
                       nameKey="category"
                       cx="50%"
                       cy="50%"
-                      outerRadius={80}
-                      labelLine={false}
+                      outerRadius={72}
+                      strokeWidth={0}
                     >
-                      {stats.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      {stats.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                       ))}
                     </Pie>
-                    <RechartsTooltip formatter={(val: any) => typeof val === 'number' ? `${val.toFixed(2)} kg` : val} />
-                    <Legend />
+                    <RechartsTooltip
+                      contentStyle={{
+                        background: "var(--surface)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        color: "var(--text-primary)",
+                      }}
+                      formatter={(v: any) => typeof v === "number" ? [`${v.toFixed(2)} kg`, "CO₂"] : v}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             )}
           </div>
 
-          {/* Bar Chart: Distribution */}
-          <div className="rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm dark:border-neutral-800 dark:bg-[#1E293B]">
-            <h2 className="mb-6 text-lg font-medium text-neutral-900 dark:text-white">
-              Impact by Category
-            </h2>
-
+          {/* Bar */}
+          <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
+            <div className="mb-4">
+              <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-0.5">Breakdown</p>
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">Impact by Category</h2>
+            </div>
             {stats.length === 0 ? (
-              <div className="h-64 flex items-center justify-center text-sm text-neutral-500">
-                No data available.
+              <div className="h-56 flex items-center justify-center text-sm text-[var(--text-tertiary)]">
+                No scan data yet.
               </div>
             ) : (
-              <div className="h-64 w-full text-sm">
+              <div className="h-56">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats} layout="vertical" margin={{ left: 10 }}>
+                  <BarChart data={stats} layout="vertical" margin={{ left: 4, right: 16 }}>
                     <XAxis type="number" hide />
-                    <YAxis dataKey="category" type="category" axisLine={false} tickLine={false} width={80} />
-                    <RechartsTooltip cursor={{fill: 'transparent'}} formatter={(val: any) => typeof val === 'number' ? `${val.toFixed(2)} kg` : val} />
-                    <Bar dataKey="totalCO2" radius={[0, 4, 4, 0]}>
-                      {stats.map((entry, index) => (
-                        <Cell key={`cell-bar-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <YAxis
+                      dataKey="category"
+                      type="category"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: "var(--text-secondary)" }}
+                      width={70}
+                    />
+                    <RechartsTooltip
+                      cursor={{ fill: "var(--surface-raised)" }}
+                      contentStyle={{
+                        background: "var(--surface)",
+                        border: "1px solid var(--border)",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        color: "var(--text-primary)",
+                      }}
+                      formatter={(v: any) => typeof v === "number" ? [`${v.toFixed(2)} kg`, "CO₂"] : v}
+                    />
+                    <Bar dataKey="totalCO2" radius={[0, 3, 3, 0]} maxBarSize={20}>
+                      {stats.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -202,6 +255,12 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        {/* ── Compliance note ────────────────────────────────── */}
+        <p className="text-xs text-[var(--text-tertiary)] border-t border-[var(--border)] pt-4">
+          CO₂ equivalencies based on EPA metrics. Reports are BRSR-aligned for SEBI compliance.
+          Tree absorption rate: 21 kg CO₂/year. Vehicle emission rate: 403 g CO₂/mile.
+        </p>
       </div>
     </ProtectedRoute>
   );

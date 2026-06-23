@@ -5,82 +5,125 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { setToken } from "@/lib/session";
+import { AlertIcon, ArrowRightIcon, LeafIcon } from "@/components/ui/Icons";
 
 export default function SignupPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState("");
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
       setError("");
-
       const data = await apiFetch("/auth/signup", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
-
       setToken(data.token);
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message || "Signup failed");
+      setError(err.message || "Could not create account. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-[90vh] items-center justify-center px-4 relative overflow-hidden">
-      {/* Background decorative elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-emerald-500/20 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-teal-500/20 blur-[120px] pointer-events-none" />
+    <div className="min-h-[calc(100vh-48px)] flex">
 
-      <div className="relative w-full max-w-md animate-fadeIn z-10">
-        <div className="rounded-3xl border border-white/20 bg-white/60 p-8 shadow-[0_8px_32px_rgba(0,0,0,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-neutral-900/60 dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white mb-2">
-              Join <span className="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">IWIS</span>
+      {/* ── Left brand panel ─────────────────────────────────── */}
+      <div className="hidden lg:flex w-[420px] shrink-0 flex-col justify-between border-r border-[var(--border)] px-10 py-12 bg-[var(--surface-raised)]">
+        <div>
+          <div className="flex items-center gap-2 mb-10">
+            <span className="w-7 h-7 rounded bg-[var(--accent)] flex items-center justify-center">
+              <span className="text-white text-xs font-bold">IW</span>
+            </span>
+            <span className="text-sm font-semibold text-[var(--text-primary)]">IWIS</span>
+          </div>
+          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3 leading-snug">
+            Start tracking your<br />environmental impact.
+          </h2>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            Join thousands of citizens, municipalities, and ESG teams using IWIS
+            to measure, manage, and report on waste reduction.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {[
+            "Free to use — no credit card required",
+            "AI waste scanner from day one",
+            "Earn Green Points on every scan",
+            "Generate ESG reports instantly",
+          ].map((item) => (
+            <div key={item} className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]">
+              <span className="w-4 h-4 rounded-full border border-[var(--accent-border)] bg-[var(--accent-subtle)] flex items-center justify-center shrink-0">
+                <LeafIcon size={9} className="text-[var(--accent-text)]" />
+              </span>
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Right form panel ─────────────────────────────────── */}
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-sm">
+
+          <div className="mb-7">
+            <h1 className="text-xl font-semibold text-[var(--text-primary)] mb-1">
+              Create your account
             </h1>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              Start your journey towards a greener planet.
+            <p className="text-sm text-[var(--text-secondary)]">
+              Get started with IWIS in seconds.
             </p>
           </div>
 
           {error && (
-            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400 flex items-center gap-3">
-              <span className="text-lg">⚠️</span>
+            <div className="mb-5 flex items-start gap-2.5 px-3.5 py-3 rounded-lg border border-[var(--destructive-border)] bg-[var(--destructive-bg)] text-sm text-[var(--destructive)]">
+              <AlertIcon size={14} className="shrink-0 mt-0.5" />
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSignup} className="space-y-5">
+          <form onSubmit={handleSignup} className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                Email Address
+              <label
+                htmlFor="email"
+                className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5"
+              >
+                Email address
               </label>
               <input
+                id="email"
                 type="email"
                 placeholder="you@example.com"
                 required
-                className="w-full rounded-xl border border-neutral-200 bg-white/50 px-4 py-3.5 text-sm outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-neutral-700/50 dark:bg-neutral-800/50 dark:text-white dark:focus:border-emerald-500"
+                autoComplete="email"
+                className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15 transition-colors"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+              <label
+                htmlFor="password"
+                className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5"
+              >
                 Password
               </label>
               <input
+                id="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder="Min. 8 characters"
                 required
-                className="w-full rounded-xl border border-neutral-200 bg-white/50 px-4 py-3.5 text-sm outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-neutral-700/50 dark:bg-neutral-800/50 dark:text-white dark:focus:border-emerald-500"
+                autoComplete="new-password"
+                className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15 transition-colors"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -88,26 +131,41 @@ export default function SignupPage() {
 
             <button
               type="submit"
+              id="signup-submit"
               disabled={loading}
-              className="group relative w-full overflow-hidden rounded-xl bg-neutral-900 py-3.5 text-sm font-medium text-white transition-all hover:shadow-lg hover:shadow-emerald-500/25 disabled:opacity-70 dark:bg-white dark:text-black mt-2"
+              className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-[var(--text-primary)] text-[var(--bg)] text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity mt-1"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                {loading ? "Creating Account..." : "Create Account"}
-                {!loading && <span className="transition-transform group-hover:translate-x-1">→</span>}
-              </span>
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  Creating account…
+                </span>
+              ) : (
+                <>
+                  Create account
+                  <ArrowRightIcon size={13} />
+                </>
+              )}
             </button>
+
+            <p className="text-xs text-[var(--text-tertiary)] text-center leading-relaxed">
+              By creating an account you agree to our{" "}
+              <Link href="/" className="underline hover:text-[var(--text-secondary)] transition-colors">
+                Terms of Service
+              </Link>
+              .
+            </p>
           </form>
 
-          <div className="mt-8 text-center text-sm text-neutral-500 dark:text-neutral-400">
+          <p className="mt-6 text-center text-sm text-[var(--text-secondary)]">
             Already have an account?{" "}
             <Link
               href="/login"
-              className="font-medium text-emerald-600 transition-colors hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300"
+              className="text-[var(--accent-text)] font-medium hover:underline"
             >
-              Sign In
+              Sign in
             </Link>
-          </div>
+          </p>
         </div>
       </div>
     </div>

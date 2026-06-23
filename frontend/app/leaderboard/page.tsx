@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
+import { tierConfig } from "@/components/ui/Icons";
 
 interface LeaderboardUser {
-  email: string;
-  totalCO2: number;
-  totalScans: number;
-  tier: string;
+  email:       string;
+  totalCO2:    number;
+  totalScans:  number;
+  tier:        string;
 }
 
 export default function LeaderboardPage() {
@@ -16,135 +17,116 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadLeaders = async () => {
-      try {
-        const data = await apiFetch("/waste/leaderboard");
-        setLeaders(data);
-      } catch (err) {
-        console.error("Failed to load leaderboard:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadLeaders();
+    apiFetch("/waste/leaderboard")
+      .then((d) => setLeaders(d))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
-  const getTierIcon = (tier: string) => {
-    switch (tier) {
-      case "Gold": return "🥇";
-      case "Silver": return "🥈";
-      case "Bronze": return "🥉";
-      default: return "🌱";
-    }
+  const medal = (i: number) => {
+    if (i === 0) return <span className="text-xs font-bold text-amber-600">#1</span>;
+    if (i === 1) return <span className="text-xs font-bold text-zinc-500">#2</span>;
+    if (i === 2) return <span className="text-xs font-bold text-orange-600">#3</span>;
+    return <span className="text-xs text-[var(--text-tertiary)]">#{i + 1}</span>;
   };
 
   return (
     <ProtectedRoute>
-      <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn">
-        <div className="text-center space-y-4 mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
-            Community <span className="bg-gradient-to-r from-emerald-500 to-teal-400 bg-clip-text text-transparent">Leaderboard</span>
+      <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn">
+
+        {/* ── Page header ──────────────────────────────────── */}
+        <div className="border-b border-[var(--border)] pb-5">
+          <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
+            Community
+          </p>
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
+            Impact Rankings
           </h1>
-          <p className="text-neutral-500 max-w-xl mx-auto">
-            See who's making the biggest impact. Compete with your neighbors to reduce the most CO₂ and earn Green Points.
+          <p className="text-sm text-[var(--text-secondary)] mt-1">
+            Users ranked by total CO₂ diverted from landfill. Updated in real time.
           </p>
         </div>
 
         {loading ? (
-          <div className="flex justify-center p-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+          <div className="flex items-center justify-center gap-2.5 py-16 text-sm text-[var(--text-tertiary)]">
+            <span className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+            Loading rankings…
+          </div>
+        ) : leaders.length === 0 ? (
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-12 text-center">
+            <p className="text-sm font-medium text-[var(--text-primary)] mb-1">No rankings yet</p>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Be the first to scan waste and claim the top spot.
+            </p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Top 3 Podium (If we have at least 3 users) */}
-            {leaders.length >= 3 && (
-              <div className="flex flex-col md:flex-row justify-center items-end gap-4 mb-16 pt-8">
-                {/* 2nd Place */}
-                <div className="order-2 md:order-1 flex flex-col items-center animate-fadeIn" style={{ animationDelay: '0.2s' }}>
-                  <div className="w-20 h-20 rounded-full bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center text-3xl mb-4 border-4 border-neutral-300 dark:border-neutral-600 shadow-lg relative">
-                    🥈
-                    <div className="absolute -bottom-2 -right-2 bg-neutral-900 text-white dark:bg-white dark:text-black w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm">2</div>
-                  </div>
-                  <p className="font-semibold text-neutral-900 dark:text-white truncate w-32 text-center">{leaders[1].email.split('@')[0]}</p>
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">{leaders[1].totalCO2.toFixed(1)} kg</p>
-                  <div className="w-24 h-24 md:h-32 bg-gradient-to-t from-neutral-200 to-white/50 dark:from-neutral-800 dark:to-neutral-900/50 mt-4 rounded-t-xl" />
-                </div>
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
 
-                {/* 1st Place */}
-                <div className="order-1 md:order-2 flex flex-col items-center animate-fadeIn z-10" style={{ animationDelay: '0.1s' }}>
-                  <div className="text-4xl animate-float mb-2">👑</div>
-                  <div className="w-28 h-28 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-4xl mb-4 border-4 border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.3)] relative">
-                    🥇
-                    <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-black w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-sm">1</div>
-                  </div>
-                  <p className="font-bold text-lg text-neutral-900 dark:text-white truncate w-40 text-center">{leaders[0].email.split('@')[0]}</p>
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">{leaders[0].totalCO2.toFixed(1)} kg CO₂</p>
-                  <div className="w-32 h-32 md:h-44 bg-gradient-to-t from-yellow-100 to-white/50 dark:from-yellow-900/20 dark:to-neutral-900/50 mt-4 rounded-t-xl" />
-                </div>
+            {/* Table header */}
+            <div className="grid grid-cols-12 px-4 py-2.5 border-b border-[var(--border)] bg-[var(--surface-raised)] text-2xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider">
+              <div className="col-span-1 text-center">Rank</div>
+              <div className="col-span-5 pl-3">User</div>
+              <div className="col-span-2 text-center hidden sm:block">Tier</div>
+              <div className="col-span-2 text-right hidden sm:block">Scans</div>
+              <div className="col-span-4 sm:col-span-2 text-right">CO₂ Saved</div>
+            </div>
 
-                {/* 3rd Place */}
-                <div className="order-3 flex flex-col items-center animate-fadeIn" style={{ animationDelay: '0.3s' }}>
-                  <div className="w-20 h-20 rounded-full bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-3xl mb-4 border-4 border-orange-300 dark:border-orange-800 shadow-lg relative">
-                    🥉
-                    <div className="absolute -bottom-2 -right-2 bg-orange-400 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm">3</div>
-                  </div>
-                  <p className="font-semibold text-neutral-900 dark:text-white truncate w-32 text-center">{leaders[2].email.split('@')[0]}</p>
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">{leaders[2].totalCO2.toFixed(1)} kg</p>
-                  <div className="w-24 h-20 md:h-24 bg-gradient-to-t from-orange-100 to-white/50 dark:from-orange-900/20 dark:to-neutral-900/50 mt-4 rounded-t-xl" />
-                </div>
-              </div>
-            )}
-
-            {/* List for everyone else (or all if < 3) */}
-            <div className="bg-white dark:bg-[#1E293B] rounded-3xl border border-neutral-200 dark:border-neutral-800 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-[#0F172A] grid grid-cols-12 text-sm font-medium text-neutral-500 uppercase tracking-wide">
-                <div className="col-span-2 text-center">Rank</div>
-                <div className="col-span-6">Eco-Warrior</div>
-                <div className="col-span-2 text-center hidden sm:block">Scans</div>
-                <div className="col-span-4 sm:col-span-2 text-right">CO₂ Saved</div>
-              </div>
-              
-              <div className="divide-y divide-neutral-100 dark:divide-neutral-800">
-                {leaders.map((leader, index) => (
-                  <div 
-                    key={index} 
-                    className="px-6 py-4 grid grid-cols-12 items-center hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors animate-fadeIn"
-                    style={{ animationDelay: `${0.1 * index}s` }}
+            <div className="divide-y divide-[var(--border)]">
+              {leaders.map((leader, i) => {
+                const tier = tierConfig(leader.tier);
+                const handle = leader.email.split("@")[0];
+                const isTop3 = i < 3;
+                return (
+                  <div
+                    key={i}
+                    className={`grid grid-cols-12 items-center px-4 py-3 transition-colors ${
+                      isTop3 ? "hover:bg-[var(--surface-raised)]" : "hover:bg-[var(--surface-raised)]"
+                    } ${i === 0 ? "bg-amber-50/50 dark:bg-amber-900/5" : ""}`}
                   >
-                    <div className="col-span-2 text-center font-medium text-neutral-400">
-                      #{index + 1}
+                    {/* Rank */}
+                    <div className="col-span-1 flex justify-center">
+                      {medal(i)}
                     </div>
-                    <div className="col-span-6 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-lg">
-                        {getTierIcon(leader.tier)}
+
+                    {/* User */}
+                    <div className="col-span-5 pl-3 flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-[var(--surface-raised)] border border-[var(--border)] flex items-center justify-center shrink-0">
+                        <span className="text-xs font-semibold text-[var(--text-secondary)]">
+                          {handle[0]?.toUpperCase()}
+                        </span>
                       </div>
-                      <div>
-                        <div className="font-semibold text-neutral-900 dark:text-white truncate max-w-[120px] sm:max-w-[200px]">
-                          {leader.email.split('@')[0]}
-                        </div>
-                        <div className="text-xs text-neutral-500 dark:text-neutral-400">
-                          {leader.tier}
-                        </div>
-                      </div>
+                      <span className="text-sm font-medium text-[var(--text-primary)] truncate max-w-[120px] sm:max-w-[200px]">
+                        {handle}
+                      </span>
                     </div>
-                    <div className="col-span-2 text-center hidden sm:block text-neutral-600 dark:text-neutral-300">
+
+                    {/* Tier badge */}
+                    <div className="col-span-2 hidden sm:flex justify-center">
+                      <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${tier.className}`}>
+                        {tier.label}
+                      </span>
+                    </div>
+
+                    {/* Scans */}
+                    <div className="col-span-2 text-right text-xs text-[var(--text-secondary)] hidden sm:block">
                       {leader.totalScans}
                     </div>
-                    <div className="col-span-4 sm:col-span-2 text-right font-medium text-emerald-600 dark:text-emerald-400">
-                      {leader.totalCO2.toFixed(1)} <span className="text-xs">kg</span>
+
+                    {/* CO₂ */}
+                    <div className="col-span-4 sm:col-span-2 text-right text-sm font-semibold text-[var(--accent-text)]">
+                      {leader.totalCO2.toFixed(1)}
+                      <span className="text-xs font-normal text-[var(--text-tertiary)] ml-0.5">kg</span>
                     </div>
                   </div>
-                ))}
-                
-                {leaders.length === 0 && (
-                  <div className="p-8 text-center text-neutral-500">
-                    No environmental leaders yet. Be the first to start scanning!
-                  </div>
-                )}
-              </div>
+                );
+              })}
             </div>
           </div>
         )}
+
+        <p className="text-xs text-[var(--text-tertiary)]">
+          CO₂ figures represent total waste diverted and classified through the IWIS platform.
+        </p>
       </div>
     </ProtectedRoute>
   );

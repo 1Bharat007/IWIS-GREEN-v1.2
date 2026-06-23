@@ -3,145 +3,113 @@
 import { useState, useEffect, useRef } from "react";
 import { apiFetch } from "@/lib/api";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
+import { UploadIcon, CheckIcon, AlertIcon, RefreshIcon } from "@/components/ui/Icons";
 
-const CATEGORY_ICONS: Record<string, string> = {
-  Plastic: "🥤",
-  Paper: "📄",
-  Metal: "🥫",
-  Glass: "🍾",
-  Organic: "🥬",
-  Other: "♻️",
-};
-
-const TIPS: Record<string, string> = {
-  Plastic: "Rinse plastic before recycling to increase reuse quality.",
-  Paper: "Avoid glossy or laminated paper — they can't be recycled.",
-  Metal: "Aluminum can be recycled infinitely without losing quality.",
-  Glass: "Separate glass by color for better recycling efficiency.",
-  Organic: "Compost organic waste to reduce methane emissions.",
-  Other: "When in doubt, check your local waste disposal guidelines.",
+const CATEGORY_LABELS: Record<string, string> = {
+  Plastic: "Plastic",
+  Paper:   "Paper",
+  Metal:   "Metal",
+  Glass:   "Glass",
+  Organic: "Organic",
+  Other:   "Mixed / Other",
 };
 
 type ScanResult = {
-  category: string;
+  category:   string;
   confidence: number;
-  co2: number;
-  smartTip: string;
-  tier: string;
-  streak: number;
+  co2:        number;
+  smartTip:   string;
+  tier:       string;
+  streak:     number;
 };
 
 type ServerStatus = "checking" | "ready" | "waking" | "offline";
 
 export default function ScanPage() {
-  const [result, setResult] = useState<ScanResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [scanProgress, setScanProgress] = useState(0);
+  const [result,       setResult]       = useState<ScanResult | null>(null);
+  const [loading,      setLoading]      = useState(false);
+  const [preview,      setPreview]      = useState<string | null>(null);
+  const [error,        setError]        = useState<string | null>(null);
+  const [progress,     setProgress]     = useState(0);
   const [serverStatus, setServerStatus] = useState<ServerStatus>("checking");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const progressRef = useRef<NodeJS.Timeout | null>(null);
+  const progressRef  = useRef<NodeJS.Timeout | null>(null);
 
-  // Wake up backend on mount
   useEffect(() => {
     const wakeServer = async () => {
+      const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
       try {
-        const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-        const res = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(8000) });
-        if (res.ok) {
-          setServerStatus("ready");
-        } else {
-          setServerStatus("waking");
-          // Retry once after 5s
+        const r = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(8000) });
+        setServerStatus(r.ok ? "ready" : "waking");
+        if (!r.ok) {
           setTimeout(async () => {
-            try {
-              const r2 = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(10000) });
+            try { const r2 = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(10000) });
               setServerStatus(r2.ok ? "ready" : "offline");
-            } catch {
-              setServerStatus("offline");
-            }
+            } catch { setServerStatus("offline"); }
           }, 5000);
         }
       } catch {
         setServerStatus("waking");
-        // Backend is sleeping - retry after 10s
-        const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         setTimeout(async () => {
-          try {
-            const r2 = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(15000) });
+          try { const r2 = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(15000) });
             setServerStatus(r2.ok ? "ready" : "offline");
-          } catch {
-            setServerStatus("offline");
-          }
+          } catch { setServerStatus("offline"); }
         }, 10000);
       }
     };
     wakeServer();
   }, []);
 
-  const startProgressBar = () => {
-    setScanProgress(0);
-    let progress = 0;
-    // Animate from 0 → 90% in ~800ms, then hold until done
+  const startProgress = () => {
+    setProgress(0);
+    let p = 0;
     progressRef.current = setInterval(() => {
-      progress += Math.random() * 18 + 12;
-      if (progress >= 90) {
-        progress = 90;
-        if (progressRef.current) clearInterval(progressRef.current);
-      }
-      setScanProgress(Math.min(progress, 90));
-    }, 100);
+      p += Math.random() * 15 + 8;
+      if (p >= 88) { p = 88; if (progressRef.current) clearInterval(progressRef.current); }
+      setProgress(Math.min(p, 88));
+    }, 120);
   };
 
-  const finishProgressBar = () => {
+  const finishProgress = () => {
     if (progressRef.current) clearInterval(progressRef.current);
-    setScanProgress(100);
-    setTimeout(() => setScanProgress(0), 400);
+    setProgress(100);
+    setTimeout(() => setProgress(0), 500);
   };
 
   const handleUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      setError("Please upload a valid image file (JPG, PNG, WEBP, etc.)");
+      setError("Please upload a valid image file (JPG, PNG, WEBP).");
       return;
     }
-
     const reader = new FileReader();
     reader.onloadend = async () => {
       setLoading(true);
       setResult(null);
       setError(null);
-      startProgressBar();
-
+      startProgress();
       const base64 = reader.result as string;
       setPreview(base64);
 
-      // Try to get GPS coords (non-blocking, 3s timeout)
-      let lat: number | null = null;
-      let lng: number | null = null;
+      let lat: number | null = null, lng: number | null = null;
       try {
         if ("geolocation" in navigator) {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
-          });
-          lat = position.coords.latitude;
-          lng = position.coords.longitude;
+          const pos = await new Promise<GeolocationPosition>((res, rej) =>
+            navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000 })
+          );
+          lat = pos.coords.latitude;
+          lng = pos.coords.longitude;
         }
-      } catch {
-        // GPS optional — continue without it
-      }
+      } catch { /* GPS optional */ }
 
       try {
         const data = await apiFetch("/waste/scan", {
           method: "POST",
           body: JSON.stringify({ image: base64, lat, lng }),
         });
-
-        finishProgressBar();
+        finishProgress();
         setResult(data);
       } catch (err: any) {
-        finishProgressBar();
-        console.error("Scan error:", err);
+        finishProgress();
         setError(
           err?.message?.includes("Failed to connect")
             ? "Server is starting up — please wait 15 seconds and try again."
@@ -159,57 +127,55 @@ export default function ScanPage() {
     setResult(null);
     setPreview(null);
     setError(null);
-    setScanProgress(0);
+    setProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
     <ProtectedRoute>
-      <div className="max-w-2xl mx-auto space-y-8 py-8 animate-fadeIn">
-        {/* Header */}
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 text-3xl mb-2">
-            📸
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-neutral-900 dark:text-white">
-            Smart Waste Scanner
+      <div className="max-w-2xl mx-auto space-y-6 py-2 animate-fadeIn">
+
+        {/* ── Page header ──────────────────────────────────── */}
+        <div className="border-b border-[var(--border)] pb-5">
+          <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
+            AI Classification
+          </p>
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
+            Waste Scanner
           </h1>
-          <p className="text-neutral-500 dark:text-neutral-400 max-w-md mx-auto">
-            Upload an image of your waste. Our AI will identify it in seconds and calculate your CO₂ savings.
+          <p className="text-sm text-[var(--text-secondary)] mt-1">
+            Upload an image to classify waste material and calculate your CO₂ savings.
           </p>
         </div>
 
-        {/* Server status banner */}
+        {/* Server status */}
         {serverStatus === "waking" && !loading && !result && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/40 text-sm text-amber-700 dark:text-amber-400">
-            <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin shrink-0" />
-            <span>Server is starting up (may take ~15 sec on first use)…</span>
+          <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border border-[var(--warning-bg)] bg-[var(--warning-bg)] text-xs font-medium text-[var(--warning)]">
+            <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+            Backend is starting up — first scan may take ~15 seconds.
           </div>
         )}
 
         {/* Progress bar */}
         {loading && (
-          <div className="h-1.5 w-full bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+          <div className="h-0.5 w-full bg-[var(--border)] rounded-full overflow-hidden">
             <div
-              className="h-full bg-emerald-500 rounded-full transition-all duration-150 ease-out"
-              style={{ width: `${scanProgress}%` }}
+              className="h-full bg-[var(--accent)] rounded-full transition-all duration-200 ease-out"
+              style={{ width: `${progress}%` }}
             />
           </div>
         )}
 
-        {/* Error state */}
+        {/* Error */}
         {error && (
-          <div className="p-5 rounded-2xl bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/40 flex items-start gap-4">
-            <span className="text-2xl">⚠️</span>
-            <div className="flex-1">
-              <p className="font-semibold text-red-800 dark:text-red-400 mb-1">Scan Failed</p>
-              <p className="text-sm text-red-700/80 dark:text-red-300/70">{error}</p>
-            </div>
+          <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-lg border border-[var(--destructive-border)] bg-[var(--destructive-bg)] text-sm text-[var(--destructive)]">
+            <AlertIcon size={14} className="shrink-0 mt-0.5" />
+            <div className="flex-1">{error}</div>
             <button
               onClick={handleReset}
-              className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline shrink-0"
+              className="text-xs font-medium underline shrink-0 hover:opacity-70 transition-opacity"
             >
-              Try Again
+              Dismiss
             </button>
           </div>
         )}
@@ -218,131 +184,111 @@ export default function ScanPage() {
         {!preview && !loading && !result && (
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="mt-8 border-2 border-dashed border-neutral-300 dark:border-neutral-700 rounded-3xl p-12 text-center bg-neutral-50 dark:bg-[#1E293B]/50 hover:bg-neutral-100 dark:hover:bg-[#1E293B] transition-all cursor-pointer group relative overflow-hidden"
+            className="border border-dashed border-[var(--border-strong)] rounded-xl p-12 text-center bg-[var(--surface)] hover:bg-[var(--surface-raised)] transition-colors cursor-pointer group"
           >
             <input
               ref={fileInputRef}
               type="file"
               className="hidden"
               accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleUpload(file);
-              }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
             />
-            <div className="space-y-4">
-              <div className="w-20 h-20 mx-auto rounded-full bg-white dark:bg-neutral-800 shadow-sm flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform duration-200">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-lg font-medium text-neutral-900 dark:text-white">Click to upload image</p>
-                <p className="text-sm text-neutral-500 mt-1">JPG, PNG, WEBP supported</p>
-              </div>
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                ✨ Results in ~1 second
-              </p>
+            <div className="w-10 h-10 mx-auto rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-tertiary)] mb-4 group-hover:border-[var(--border-strong)] transition-colors">
+              <UploadIcon size={16} />
             </div>
+            <p className="text-sm font-medium text-[var(--text-primary)] mb-1">
+              Click to upload image
+            </p>
+            <p className="text-xs text-[var(--text-tertiary)]">JPG, PNG, WEBP supported</p>
           </div>
         )}
 
         {/* Scanning state */}
         {preview && loading && (
-          <div className="relative w-full max-w-md mx-auto rounded-3xl overflow-hidden border border-neutral-200 dark:border-neutral-800 shadow-lg">
-            <div className="relative aspect-square w-full bg-black/5 flex items-center justify-center">
-              <img src={preview} alt="Scanning" className="object-contain w-full h-full opacity-50 blur-[2px]" />
-
-              {/* Scanning laser */}
-              <div className="absolute inset-0 overflow-hidden">
-                <div className="w-full h-1 bg-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.8)] absolute animate-scanline" />
-                <div className="absolute inset-0 bg-emerald-500/10 mix-blend-overlay animate-pulse" />
-              </div>
-
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-neutral-900/80 backdrop-blur-md text-white px-6 py-3 rounded-full font-medium flex items-center gap-3">
-                <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-                AI analyzing…
+          <div className="relative rounded-xl overflow-hidden border border-[var(--border)] aspect-video bg-[var(--surface-raised)]">
+            <img src={preview} alt="Analyzing" className="object-contain w-full h-full opacity-40" />
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="w-full h-px bg-[var(--accent)] absolute animate-scanline opacity-80" />
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex items-center gap-2.5 px-4 py-2 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-sm font-medium text-[var(--text-primary)]">
+                <span className="w-3.5 h-3.5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                Analyzing…
               </div>
             </div>
           </div>
         )}
 
-        {/* Result state */}
+        {/* Result */}
         {result && preview && (
-          <div className="grid md:grid-cols-2 gap-8 animate-fadeIn">
-            <div className="relative aspect-square rounded-3xl overflow-hidden border border-neutral-200 dark:border-neutral-800 shadow-sm">
-              <img src={preview} alt="Result" className="object-cover w-full h-full" />
-              <div className="absolute top-4 right-4 bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                ✓ Verified
+          <div className="space-y-4 animate-fadeIn">
+            <div className="grid sm:grid-cols-2 gap-4">
+              {/* Image */}
+              <div className="relative rounded-xl overflow-hidden border border-[var(--border)] aspect-square">
+                <img src={preview} alt="Scanned" className="object-cover w-full h-full" />
+                <div className="absolute top-3 right-3 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[var(--accent)] text-white text-xs font-medium">
+                  <CheckIcon size={11} />
+                  Verified
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-5 flex flex-col justify-center">
-              {/* Main result card */}
-              <div className="p-6 rounded-3xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#1E293B] shadow-sm">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <p className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-1">Detected Material</p>
-                    <h2 className="text-3xl font-bold text-neutral-900 dark:text-white">{result.category}</h2>
-                  </div>
-                  <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-2xl">
-                    {CATEGORY_ICONS[result.category] || "♻️"}
-                  </div>
+              {/* Data */}
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-4">
+                <div>
+                  <p className="text-2xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
+                    Detected Material
+                  </p>
+                  <p className="text-xl font-semibold text-[var(--text-primary)]">
+                    {CATEGORY_LABELS[result.category] ?? result.category}
+                  </p>
                 </div>
 
-                <div className="space-y-2 mb-5">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-neutral-500">AI Confidence</span>
-                    <span className="font-semibold text-neutral-900 dark:text-white">{result.confidence}%</span>
+                {/* Confidence bar */}
+                <div>
+                  <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1.5">
+                    <span>AI Confidence</span>
+                    <span className="font-medium text-[var(--text-primary)]">{result.confidence}%</span>
                   </div>
-                  <div className="h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-[var(--surface-raised)] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out"
+                      className="h-full bg-[var(--accent)] rounded-full transition-all duration-700"
                       style={{ width: `${result.confidence}%` }}
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 border-t border-neutral-100 dark:border-neutral-800 pt-5">
-                  <div>
-                    <p className="text-xs text-neutral-500 mb-1">CO₂ Avoided</p>
-                    <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">+{result.co2} kg</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-neutral-500 mb-1">Points Earned</p>
-                    <p className="text-lg font-bold text-amber-500">+10 pts</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-neutral-500 mb-1">Your Tier</p>
-                    <p className="text-sm font-semibold text-neutral-700 dark:text-neutral-300">{result.tier}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-neutral-500 mb-1">Streak</p>
-                    <p className="text-sm font-semibold text-orange-500">🔥 {result.streak} days</p>
-                  </div>
+                {/* Metrics */}
+                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[var(--border)]">
+                  {[
+                    { label: "CO₂ Avoided",   value: `+${result.co2} kg` },
+                    { label: "Points Earned",  value: "+10 pts" },
+                    { label: "Your Tier",      value: result.tier },
+                    { label: "Streak",         value: `${result.streak} days` },
+                  ].map(({ label, value }) => (
+                    <div key={label}>
+                      <p className="text-2xs text-[var(--text-tertiary)] mb-0.5">{label}</p>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">{value}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              {/* Smart tip */}
-              <div className="p-5 rounded-2xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
-                <div className="flex items-start gap-3">
-                  <div className="text-xl mt-0.5">💡</div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-1">Eco Tip</h3>
-                    <p className="text-xs text-blue-800/80 dark:text-blue-300/70 leading-relaxed">
-                      {result.smartTip || TIPS[result.category] || "Dispose responsibly and help the planet."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={handleReset}
-                className="w-full py-4 bg-neutral-900 dark:bg-white text-white dark:text-black rounded-2xl font-semibold hover:opacity-90 transition shadow-md"
-              >
-                Scan Another Item
-              </button>
             </div>
+
+            {/* Eco tip */}
+            {result.smartTip && (
+              <div className="px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] text-sm text-[var(--text-secondary)] leading-relaxed">
+                <span className="font-medium text-[var(--text-primary)]">Eco tip — </span>
+                {result.smartTip}
+              </div>
+            )}
+
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
+            >
+              <RefreshIcon size={13} />
+              Scan another item
+            </button>
           </div>
         )}
       </div>
