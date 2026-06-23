@@ -13,11 +13,15 @@ backend/*.sqlite
 frontend/.next/
 frontend/out/
 
-# Environment files
+# Environment files (NEVER commit real .env files)
 .env
 .env.*
+!.env.example
+!**/.env.example
 frontend/.env*
+!frontend/.env.example
 backend/.env*
+!backend/.env.example
 
 # Logs
 npm-debug.log*

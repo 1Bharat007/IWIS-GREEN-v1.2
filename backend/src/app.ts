@@ -64,4 +64,9 @@ app.get("/", (_, res) => {
   res.send("IWIS Backend Running");
 });
 
+// Health check endpoint — used by frontend to wake up Render free-tier server
+app.get("/api/health", (_, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 export default app;
