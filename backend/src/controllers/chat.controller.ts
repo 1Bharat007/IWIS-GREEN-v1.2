@@ -46,7 +46,7 @@ If the user asks about anything unrelated to the environment (e.g., coding, math
 
     const response = await executeWithGeminiFallback((ai) =>
       ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-2.0-flash',
         contents,
         config: {
           systemInstruction,
