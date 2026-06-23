@@ -5,7 +5,7 @@
 **Intelligent Waste Information System — AI-powered waste management for India's Net Zero 2070 mission**
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-iwis--green--v103.vercel.app-4ade80?style=for-the-badge&logo=vercel&logoColor=white)](https://iwis-green-v103.vercel.app)
-[![Backend](https://img.shields.io/badge/API-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://iwis-green-v2-1.onrender.com)
+[![Backend](https://img.shields.io/badge/API-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://iwis-green-v1-2-1.onrender.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-98.8%25-3178C6?style=flat-square&logo=typescript&logoColor=white)
@@ -141,7 +141,7 @@ Open [http://localhost:3000](http://localhost:3000) 🚀
 | Service | URL |
 |---|---|
 | Frontend (Vercel) | [iwis-green-v103.vercel.app](https://iwis-green-v103.vercel.app) |
-| Backend (Render) | [iwis-green-v2-1.onrender.com](https://iwis-green-v2-1.onrender.com) |
+| Backend (Render) | [iwis-green-v1-2-1.onrender.com](https://iwis-green-v1-2-1.onrender.com) |
 
 > ⚠️ The backend runs on Render's **free tier** — it may cold-start in ~30s on first request.
 
