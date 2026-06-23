@@ -7,6 +7,7 @@ import ProtectedRoute from "@/components/layout/ProtectedRoute";
 type Message = {
   role: "user" | "model";
   text: string;
+  timestamp?: string;
 };
 
 export default function ChatPage() {
@@ -30,6 +31,7 @@ export default function ChatPage() {
         {
           role: "model",
           text: "Hello! I am EcoBot 🌿. Ask me anything about climate change, recycling, or environmental sustainability!",
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
     }
@@ -46,7 +48,12 @@ export default function ChatPage() {
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    const userMessage: Message = { role: "user", text: input.trim() };
+    const currentTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const userMessage: Message = { 
+      role: "user", 
+      text: input.trim(),
+      timestamp: currentTime 
+    };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
@@ -62,13 +69,21 @@ export default function ChatPage() {
 
       setMessages((prev) => [
         ...prev,
-        { role: "model", text: response.reply },
+        { 
+          role: "model", 
+          text: response.reply,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) 
+        },
       ]);
     } catch (error) {
       console.error(error);
       setMessages((prev) => [
         ...prev,
-        { role: "model", text: "I'm sorry, I'm having trouble connecting to my database right now. Please try again later." },
+        { 
+          role: "model", 
+          text: "I'm sorry, I'm having trouble connecting to my database right now. Please try again later.",
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) 
+        },
       ]);
     } finally {
       setLoading(false);
@@ -86,7 +101,7 @@ export default function ChatPage() {
             {messages.map((msg, index) => (
               <div
                 key={index}
-                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                className={`flex flex-col ${msg.role === "user" ? "items-end text-right" : "items-start text-left"}`}
               >
                 <div
                   className={`max-w-[75%] rounded-2xl px-5 py-3 text-sm ${
@@ -97,6 +112,11 @@ export default function ChatPage() {
                 >
                   {msg.text}
                 </div>
+                {msg.timestamp && (
+                  <span className="text-[10px] text-neutral-400 dark:text-neutral-500 mt-1 px-1 select-none">
+                    {msg.timestamp}
+                  </span>
+                )}
               </div>
             ))}
             {loading && (
