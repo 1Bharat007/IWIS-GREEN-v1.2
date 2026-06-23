@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = "iwis_super_secret_key";
+const JWT_SECRET = process.env.JWT_SECRET || "iwis_super_secret_key";
 
 export const protect = (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
