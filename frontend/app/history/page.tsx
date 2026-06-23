@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { apiFetch } from "@/lib/api";
 import { getToken } from "@/lib/session";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
+import Link from "next/link";
 import {
   LineChart,
   Line,
@@ -22,34 +23,39 @@ type Scan = {
   timestamp: string;
 };
 
+const CATEGORY_ICONS: Record<string, string> = {
+  Plastic: "🥤", Paper: "📄", Metal: "🥫", Glass: "🍾", Organic: "🥬", Other: "♻️",
+};
+
 export default function HistoryPage() {
   const [history, setHistory] = useState<Scan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      if (!getToken()) return;
-      try {
-        const res = await apiFetch("/waste/history");
-
-        // Support both array and object response
-        if (Array.isArray(res)) {
-          setHistory(res);
-        } else if (res?.history && Array.isArray(res.history)) {
-          setHistory(res.history);
-        } else {
-          setHistory([]);
-        }
-      } catch (err) {
-        console.error(err);
+  const load = async () => {
+    if (!getToken()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await apiFetch("/waste/history");
+      if (Array.isArray(res)) {
+        setHistory(res);
+      } else if (res?.history && Array.isArray(res.history)) {
+        setHistory(res.history);
+      } else {
         setHistory([]);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message?.includes("Failed to connect")
+        ? "Server is starting up. Please wait a moment and retry."
+        : "Failed to load history. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   // Aggregate CO2 per day
   const chartData = useMemo(() => {
@@ -82,9 +88,25 @@ export default function HistoryPage() {
 
   if (loading) {
     return (
-      <div className="text-sm text-neutral-500">
-        Loading history...
-      </div>
+      <ProtectedRoute>
+        <div className="flex justify-center items-center p-20">
+          <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  if (error) {
+    return (
+      <ProtectedRoute>
+        <div className="max-w-xl mx-auto mt-20 text-center space-y-4">
+          <p className="text-4xl">⚠️</p>
+          <p className="text-neutral-700 dark:text-neutral-300 font-medium">{error}</p>
+          <button onClick={load} className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition">
+            Retry
+          </button>
+        </div>
+      </ProtectedRoute>
     );
   }
 
@@ -133,40 +155,45 @@ export default function HistoryPage() {
       {/* Scan List */}
       {/* ============================= */}
 
-      {history.length === 0 ? (
-        <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 text-sm text-neutral-500">
-          You haven’t scanned anything yet.
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {history.map((scan) => (
-            <div
-              key={`${scan.timestamp}-${scan.category}`}
-              className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-5 hover:shadow-md transition"
-            >
-              <div className="flex justify-between">
-                <span className="font-medium">
-                  {scan.category}
-                </span>
-                <span className="text-sm text-neutral-500">
-                  {new Date(scan.timestamp).toLocaleDateString()}
-                </span>
-              </div>
-
-              <div className="text-sm text-neutral-500 mt-2">
-                Confidence: {scan.confidence}% • CO₂: {scan.co2} kg
-              </div>
-
-              <button 
-                 onClick={() => handleListBatch(scan.id)}
-                 className="mt-4 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition"
+        {history.length === 0 ? (
+          <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-12 text-center">
+            <p className="text-4xl mb-3">📭</p>
+            <p className="text-neutral-500 mb-4">No scans yet. Start scanning your waste to see your history!</p>
+            <Link href="/scan" className="inline-block px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition">
+              Go to Scanner →
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {history.map((scan) => (
+              <div
+                key={`${scan.timestamp}-${scan.category}`}
+                className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-5 hover:shadow-md transition"
               >
-                 Sell on Circular Exchange
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{CATEGORY_ICONS[scan.category] || "♻️"}</span>
+                    <div>
+                      <span className="font-semibold text-neutral-900 dark:text-white">{scan.category}</span>
+                      <p className="text-xs text-neutral-500 mt-0.5">{new Date(scan.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-emerald-600 dark:text-emerald-400">+{scan.co2} kg CO₂</p>
+                    <p className="text-xs text-neutral-500">{scan.confidence}% confidence</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleListBatch(scan.id)}
+                  className="mt-4 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition"
+                >
+                  ♻️ Sell on Circular Exchange
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   );
