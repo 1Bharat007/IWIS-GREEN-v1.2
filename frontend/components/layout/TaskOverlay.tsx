@@ -24,9 +24,7 @@ export function TaskOverlay() {
     }
     
     // Auto dismiss if it's completed or errored after clicking
-    if (task.status !== "running") {
-      dismissTask(task.id);
-    }
+    dismissTask(task.id);
   };
 
   return (
