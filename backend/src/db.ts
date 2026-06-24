@@ -68,6 +68,8 @@ export const initDB = async () => {
   try { await dbInstance.run("ALTER TABLE batches ADD COLUMN lng REAL"); } catch (e) {}
   // Idempotently add Green Points Wallet column
   try { await dbInstance.run("ALTER TABLE users ADD COLUMN greenPoints REAL DEFAULT 0"); } catch (e) {}
+  // Idempotently add displayName column
+  try { await dbInstance.run("ALTER TABLE users ADD COLUMN displayName TEXT"); } catch (e) {}
 
   // Password reset tokens table
   await dbInstance.exec(`

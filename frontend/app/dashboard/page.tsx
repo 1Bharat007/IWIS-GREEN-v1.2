@@ -43,15 +43,15 @@ export default function DashboardPage() {
   const totalCO2   = stats.reduce((a, s) => a + (s.totalCO2 || 0), 0);
   const totalScans = stats.reduce((a, s) => a + (s.count    || 0), 0);
   const treesEq    = (totalCO2 / 21).toFixed(2);
-  const milesEq    = (totalCO2 * 2.48).toFixed(1);
-  const gallonsEq  = (totalCO2 * 0.113).toFixed(2);
+  const kmEq       = (totalCO2 * 3.99).toFixed(1);
+  const litersEq   = (totalCO2 * 0.428).toFixed(2);
 
   const handleExportCSV = () => {
     let csv = "data:text/csv;charset=utf-8,";
     csv += "Category,Total Scans,Total CO2 Avoided (kg)\n";
     stats.forEach((s) => { csv += `${s.category},${s.count},${s.totalCO2.toFixed(3)}\n`; });
     csv += `\nTOTAL,${totalScans},${totalCO2.toFixed(3)}`;
-    csv += `\n\nEquivalency Metrics\nTree-Years of Absorption,${treesEq}\nMiles Driven Avoided,${milesEq}`;
+    csv += `\n\nEquivalency Metrics\nTree-Years of Absorption,${treesEq}\nKilometers Driven Avoided,${kmEq}`;
     const link = document.createElement("a");
     link.setAttribute("href", encodeURI(csv));
     link.setAttribute("download", `IWIS_BRSR_ESG_Report_${new Date().toISOString().split("T")[0]}.csv`);
@@ -116,9 +116,9 @@ export default function DashboardPage() {
               accent: false,
             },
             {
-              label: "Miles Avoided",
-              value: loading ? "—" : milesEq,
-              sub: "miles of driving avoided",
+              label: "Kilometers Avoided",
+              value: loading ? "—" : kmEq,
+              sub: "km of driving avoided",
               Icon: TrendUpIcon,
               accent: false,
             },
@@ -149,19 +149,28 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* ── Equivalency row ────────────────────────────────── */}
         <div className="grid sm:grid-cols-2 gap-4">
-          <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-            <span className="text-sm text-[var(--text-secondary)]">Fuel saved</span>
-            <span className="text-sm font-semibold text-[var(--text-primary)]">
-              {val(`${gallonsEq} gallons`)}
-            </span>
+          <div className="flex flex-col px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] group relative">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm text-[var(--text-secondary)]">Fuel saved</span>
+              <span className="text-sm font-semibold text-[var(--text-primary)]">
+                {val(`${litersEq} L`)}
+              </span>
+            </div>
+            <p className="text-xs text-[var(--text-tertiary)] hidden group-hover:block absolute top-full left-0 mt-2 p-3 bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg shadow-lg z-10 w-72">
+              **Fuel saved** — Calculated based on the energy required to process virgin materials vs recycled materials.
+            </p>
           </div>
-          <div className="flex items-center justify-between px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-            <span className="text-sm text-[var(--text-secondary)]">Driving emissions avoided</span>
-            <span className="text-sm font-semibold text-[var(--text-primary)]">
-              {val(`${milesEq} mi`)}
-            </span>
+          <div className="flex flex-col px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] group relative">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm text-[var(--text-secondary)]">Driving emissions avoided</span>
+              <span className="text-sm font-semibold text-[var(--text-primary)]">
+                {val(`${kmEq} km`)}
+              </span>
+            </div>
+            <p className="text-xs text-[var(--text-tertiary)] hidden group-hover:block absolute top-full right-0 mt-2 p-3 bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg shadow-lg z-10 w-72">
+              **Driving emissions** — Equivalency based on an average passenger vehicle emitting 251g CO₂ per kilometer.
+            </p>
           </div>
         </div>
 
@@ -257,10 +266,13 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Compliance note ────────────────────────────────── */}
-        <p className="text-xs text-[var(--text-tertiary)] border-t border-[var(--border)] pt-4">
-          CO₂ equivalencies based on EPA metrics. Reports are BRSR-aligned for SEBI compliance.
-          Tree absorption rate: 21 kg CO₂/year. Vehicle emission rate: 403 g CO₂/mile.
-        </p>
+        <div className="pt-4 border-t border-[var(--border)]">
+          <p className="text-xs text-[var(--text-tertiary)] leading-relaxed">
+            CO₂ equivalencies based on EPA lifecycle assessment metrics. Reports are BRSR-aligned for SEBI compliance.
+            <br />
+            Methodology: Scope 3 Category 5 (Waste Generated in Operations). Tree absorption rate: 21 kg CO₂/year. Vehicle emission rate: 251 g CO₂/km.
+          </p>
+        </div>>
       </div>
     </ProtectedRoute>
   );

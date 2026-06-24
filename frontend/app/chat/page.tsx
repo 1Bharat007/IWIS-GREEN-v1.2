@@ -65,10 +65,12 @@ export default function ChatPage() {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [stageIdx, setStageIdx] = useState(0);
   const [serverStatus, setServerStatus] = useState<ServerStatus>("checking");
   const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const stageRef = useRef<NodeJS.Timeout | null>(null);
   const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
   const storageKey = useRef<string>("");
 
@@ -216,6 +218,18 @@ export default function ChatPage() {
     setInput("");
     setLoading(true);
     setRetryCountdown(null);
+    setStageIdx(0);
+
+    // Cycle through stages
+    let currentStage = 0;
+    stageRef.current = setInterval(() => {
+      const elapsed = (currentStage + 1) * 2000;
+      const nextStage = CHAT_STAGES.findIndex((st, i) => i > currentStage && elapsed >= st.minDelay);
+      if (nextStage !== -1) {
+        currentStage = nextStage;
+        setStageIdx(nextStage);
+      }
+    }, 2000);
 
     const threadId = currentThread.id;
 
@@ -238,8 +252,6 @@ export default function ChatPage() {
     } catch (error: any) {
       console.error("EcoBot error:", error);
 
-      // BUGFIX: Use ApiError.backendMessage directly — no JSON parsing needed
-      // because apiFetch now pre-parses the backend response.
       const isNetworkError =
         error?.statusCode === 0 ||
         error?.message?.includes("Failed to fetch");
@@ -248,7 +260,6 @@ export default function ChatPage() {
       if (isNetworkError) {
         errorText = "⚡ Server is waking up — retrying in 8 seconds…";
       } else if (error instanceof ApiError) {
-        // backendMessage is already the clean string from the backend JSON
         errorText = `⚠️ ${error.backendMessage}`;
       } else {
         errorText = `😔 EcoBot error: ${error?.message || "Unknown error"}`;
@@ -266,7 +277,6 @@ export default function ChatPage() {
 
       appendMessage(threadId, errMsg);
 
-      // Auto-retry once for network errors
       if (isNetworkError) {
         let countdown = 8;
         setRetryCountdown(countdown);
@@ -286,6 +296,7 @@ export default function ChatPage() {
       }
     } finally {
       setLoading(false);
+      if (stageRef.current) clearInterval(stageRef.current);
     }
   }, [threads, activeThread, loading]);
 
@@ -481,7 +492,7 @@ export default function ChatPage() {
                 <div className="flex justify-start">
                   <div className="rounded-lg px-4 py-2.5 text-sm bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--text-secondary)] flex items-center gap-2">
                     <span className="w-3.5 h-3.5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-                    {retryCountdown !== null ? `Retrying in ${retryCountdown}s…` : "Thinking…"}
+                    <span className="animate-fadeIn" key={stageIdx}>{CHAT_STAGES[stageIdx]?.label}</span>
                   </div>
                 </div>
               )}

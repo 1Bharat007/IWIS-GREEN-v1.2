@@ -187,3 +187,38 @@ export const resetPassword = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Failed to reset password. Please try again." });
   }
 };
+
+// ─── GET MY PROFILE ───────────────────────────────────────────────────────────
+export const getMe = async (req: any, res: Response) => {
+  try {
+    const db = await getDB();
+    const user = await db.get(
+      "SELECT id, email, displayName, totalScans, totalCO2, streak, tier, greenPoints FROM users WHERE id = ?",
+      req.user.id
+    );
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
+  } catch (err) {
+    console.error("[getMe] error:", err);
+    res.status(500).json({ message: "Failed to load profile." });
+  }
+};
+
+// ─── UPDATE PROFILE ───────────────────────────────────────────────────────────
+export const updateProfile = async (req: any, res: Response) => {
+  try {
+    const { displayName } = req.body;
+    if (!displayName || typeof displayName !== "string" || displayName.trim().length === 0) {
+      return res.status(400).json({ message: "Display name is required." });
+    }
+    const db = await getDB();
+    await db.run(
+      "UPDATE users SET displayName = ? WHERE id = ?",
+      [displayName.trim().slice(0, 60), req.user.id]
+    );
+    res.json({ message: "Profile updated.", displayName: displayName.trim() });
+  } catch (err) {
+    console.error("[updateProfile] error:", err);
+    res.status(500).json({ message: "Failed to update profile." });
+  }
+};

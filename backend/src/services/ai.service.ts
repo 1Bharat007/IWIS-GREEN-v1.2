@@ -1,90 +1,98 @@
 import crypto from "crypto";
 import { executeWithGeminiFallback } from "../utils/gemini.util";
+import { ApiError } from "../utils/errors";
 
 type ScanResult = {
   category: string;
   confidence: number;
   co2: number;
   imageHash: string;
+  alternatives?: { category: string; confidence: number }[];
+  lowConfidence?: boolean;
 };
 
-const categories = [
-  { name: "Plastic", baseCO2: 2.5 },
-  { name: "Paper", baseCO2: 1.2 },
-  { name: "Metal", baseCO2: 3.8 },
-  { name: "Glass", baseCO2: 2.1 },
-  { name: "Organic", baseCO2: 0.9 },
-];
+const CO2_PER_CATEGORY: Record<string, number> = {
+  Plastic:  2.5,
+  Paper:    1.2,
+  Metal:    3.8,
+  Glass:    2.1,
+  Organic:  0.9,
+  Other:    1.0,
+};
 
 export const analyzeImage = async (imageBase64: string): Promise<ScanResult> => {
-  // Create deterministic hash from image
   const hash = crypto.createHash("sha256").update(imageBase64).digest("hex");
 
-  try {
-    let mimeType = "image/jpeg";
-    let base64Data = imageBase64;
+  let mimeType = "image/jpeg";
+  let base64Data = imageBase64;
 
-    // Remove data URI prefix if present
-    if (imageBase64.startsWith("data:")) {
-      const matches = imageBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-      if (matches && matches.length === 3) {
-        mimeType = matches[1];
-        base64Data = matches[2];
-      }
+  if (imageBase64.startsWith("data:")) {
+    const matches = imageBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    if (matches && matches.length === 3) {
+      mimeType = matches[1];
+      base64Data = matches[2];
     }
-
-    const prompt = `Analyze this image of waste.
-Classify it into one of these categories: Plastic, Paper, Metal, Glass, Organic, or Other.
-Estimate your confidence as an integer from 0 to 100.
-Estimate the CO2 savings/impact in kg if this item was appropriately recycled (as a number, e.g., 2.5).
-Return ONLY a valid JSON object without any markdown formatting matching this exact structure:
-{
-  "category": "Plastic",
-  "confidence": 95,
-  "co2": 2.5
-}`;
-
-    const response = await executeWithGeminiFallback((ai) => 
-      ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: [
-            prompt,
-            {
-                inlineData: {
-                    data: base64Data,
-                    mimeType
-                }
-            }
-        ],
-        config: {
-            responseMimeType: "application/json",
-        }
-      })
-    );
-
-    const text = response.text || "{}";
-    const result = JSON.parse(text);
-
-    return {
-      category: result.category || "Other",
-      confidence: typeof result.confidence === 'number' ? result.confidence : 85,
-      co2: typeof result.co2 === 'number' ? result.co2 : 1.5,
-      imageHash: hash,
-    };
-  } catch (error) {
-    console.error("Gemini AI Error:", error);
-    
-    // Fallback to deterministic logic if AI fails
-    const numericSeed = parseInt(hash.slice(0, 8), 16);
-    const categoryIndex = numericSeed % categories.length;
-    const selected = categories[categoryIndex];
-
-    return {
-      category: selected.name,
-      confidence: 80 + (numericSeed % 20),
-      co2: parseFloat((selected.baseCO2 + (numericSeed % 100) / 100).toFixed(2)),
-      imageHash: hash,
-    };
   }
-};
 
+  const prompt = `You are a waste classification AI for India's IWIS (Integrated Waste Intelligence System).
+
+Analyze this image and classify the waste material.
+
+Return ONLY a valid JSON object (no markdown, no explanation) with this exact structure:
+{
+  "primary": { "category": "Metal", "confidence": 92 },
+  "alternatives": [
+    { "category": "Plastic", "confidence": 45 },
+    { "category": "Other", "confidence": 12 }
+  ],
+  "co2": 3.8
+}
+
+Rules:
+- "category" must be one of: Plastic, Paper, Metal, Glass, Organic, Other
+- "confidence" is an integer 0-100 representing your certainty
+- "co2" is the estimated kg of CO₂ avoided if properly recycled (e.g., Metal = 3.8)
+- "alternatives" lists up to 2 other plausible categories with their confidence scores
+- If the image is blurry, ambiguous, or not clearly waste, set confidence below 60
+- Never guess with false certainty — lower confidence is more trustworthy than wrong certainty`;
+
+  const response = await executeWithGeminiFallback((ai) =>
+    ai.models.generateContent({
+      model: "gemini-flash-latest",
+      contents: [
+        prompt,
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType,
+          },
+        },
+      ],
+      config: {
+        responseMimeType: "application/json",
+      },
+    })
+  );
+
+  const text = (response as any).text || "{}";
+  const parsed = JSON.parse(text);
+
+  const category: string = parsed?.primary?.category || "Other";
+  const confidence: number =
+    typeof parsed?.primary?.confidence === "number"
+      ? parsed.primary.confidence
+      : 0;
+  const co2: number =
+    typeof parsed?.co2 === "number"
+      ? parsed.co2
+      : CO2_PER_CATEGORY[category] ?? 1.0;
+
+  return {
+    category,
+    confidence,
+    co2: parseFloat(co2.toFixed(2)),
+    imageHash: hash,
+    alternatives: parsed?.alternatives ?? [],
+    lowConfidence: confidence < 75,
+  };
+};

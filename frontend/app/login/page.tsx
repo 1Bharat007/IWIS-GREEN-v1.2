@@ -7,26 +7,50 @@ import { apiFetch } from "@/lib/api";
 import { setToken } from "@/lib/session";
 import { AlertIcon, ArrowRightIcon, LeafIcon } from "@/components/ui/Icons";
 
+function EyeIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-10-7-10-7a18.45 18.45 0 015.06-5.94" />
+      <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 10 7 10 7a18.5 18.5 0 01-2.16 3.19" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  );
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email,    setEmail]    = useState("");
-  const [password, setPassword] = useState("");
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState("");
+  const [email,       setEmail]       = useState("");
+  const [password,    setPassword]    = useState("");
+  const [showPwd,     setShowPwd]     = useState(false);
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email.trim() || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
     try {
       setLoading(true);
       setError("");
       const data = await apiFetch("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
       setToken(data.token);
       router.push("/dashboard");
     } catch (err: any) {
-      setError(err.message || "Invalid email or password.");
+      setError(err.backendMessage || err.message || "Invalid email or password.");
     } finally {
       setLoading(false);
     }
@@ -92,10 +116,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label
-                htmlFor="email"
-                className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5"
-              >
+              <label htmlFor="email" className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">
                 Email address
               </label>
               <input
@@ -112,29 +133,34 @@ export default function LoginPage() {
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label
-                  htmlFor="password"
-                  className="block text-xs font-medium text-[var(--text-secondary)]"
-                >
+                <label htmlFor="password" className="block text-xs font-medium text-[var(--text-secondary)]">
                   Password
                 </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-[var(--accent-text)] hover:underline"
-                >
+                <Link href="/forgot-password" className="text-xs text-[var(--accent-text)] hover:underline">
                   Forgot password?
                 </Link>
               </div>
-              <input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                required
-                autoComplete="current-password"
-                className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15 transition-colors"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPwd ? "text" : "password"}
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
+                  className="w-full px-3 py-2 pr-10 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15 transition-colors"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(!showPwd)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors"
+                  tabIndex={-1}
+                  aria-label={showPwd ? "Hide password" : "Show password"}
+                >
+                  {showPwd ? <EyeOffIcon size={15} /> : <EyeIcon size={15} />}
+                </button>
+              </div>
             </div>
 
             <button
@@ -159,10 +185,7 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center text-sm text-[var(--text-secondary)]">
             Don't have an account?{" "}
-            <Link
-              href="/signup"
-              className="text-[var(--accent-text)] font-medium hover:underline"
-            >
+            <Link href="/signup" className="text-[var(--accent-text)] font-medium hover:underline">
               Create one
             </Link>
           </p>

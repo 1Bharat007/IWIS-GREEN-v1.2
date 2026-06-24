@@ -90,10 +90,18 @@ export const scanWaste = async (req: any, res: Response) => {
       tier: newTier,
       streak: newStreak,
       smartTip: tips[result.category] || "Dispose responsibly.",
+      // Pass through alternatives and lowConfidence for trust UI
+      alternatives: result.alternatives ?? [],
+      lowConfidence: result.lowConfidence ?? false,
     });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Scan failed" });
+  } catch (err: any) {
+    console.error("[scanWaste] error:", err?.message || err);
+    const userMsg = err?.message?.includes("UNAVAILABLE")
+      ? "AI scanner is temporarily unavailable due to high demand. Please try again in 30 seconds."
+      : err?.message?.includes("TIMEOUT")
+      ? "Scan timed out. Please try again."
+      : "Scan failed. Please try again.";
+    res.status(500).json({ error: userMsg });
   }
 };
 
@@ -145,14 +153,30 @@ export const getLeaderboard = async (_req: any, res: Response) => {
   try {
     const db = await getDB();
 
+    // PRIVACY FIX: Never expose raw emails publicly.
+    // Display anonymized handle: first char of email + masked domain.
     const leaders = await db.all(
-      `SELECT email, totalCO2, totalScans, tier
+      `SELECT id, email, totalCO2, totalScans, tier
        FROM users
        ORDER BY totalCO2 DESC
        LIMIT 20`
     );
 
-    res.json(leaders);
+    const anonymized = leaders.map((u: any, idx: number) => {
+      const [local, domain] = (u.email || "").split("@");
+      const handle = local.length > 0
+        ? `${local[0]}***@${domain || ""}`
+        : `user_${idx + 1}`;
+      return {
+        displayName: handle,
+        totalCO2: u.totalCO2,
+        totalScans: u.totalScans,
+        tier: u.tier,
+        rank: idx + 1,
+      };
+    });
+
+    res.json(anonymized);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Leaderboard fetch failed" });
