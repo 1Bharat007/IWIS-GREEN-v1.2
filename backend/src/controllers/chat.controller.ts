@@ -58,27 +58,31 @@ Always be encouraging and positive about green actions.`;
 
     res.json({ reply: replyText });
   } catch (error: any) {
-    console.error("Chat Error:", error?.message || error);
-
-    if (error?.message === "TIMEOUT") {
-      return res.status(504).json({
-        error: "EcoBot took too long to respond. Please try again.",
-        retryable: true,
-      });
-    }
+    console.error("========================");
+    console.error("[CHAT CONTROLLER ERROR]");
+    console.error("Message:", error?.message);
+    console.error("Status:", error?.status);
+    console.error("Name:", error?.name);
+    console.error("Stack:", error?.stack);
+    console.error("Raw Object:", JSON.stringify(error, null, 2));
+    console.error("========================");
 
     const rawError = error?.message || "Unknown server error";
     let userFriendlyError = "EcoBot couldn't respond. Please try again.";
 
+    // Expose the raw error during debug mode
     if (rawError.includes("UNAVAILABLE") || rawError.includes("503")) {
       userFriendlyError = "EcoBot is temporarily unavailable due to high demand. Please try again in 30 seconds.";
     } else if (rawError.includes("TIMEOUT")) {
       userFriendlyError = "EcoBot took too long to respond. Please try again.";
+    } else {
+      userFriendlyError = `[DEBUG] EcoBot couldn't respond: ${rawError.substring(0, 100)}`;
     }
 
     res.status(500).json({
       error: userFriendlyError,
       retryable: true,
+      debug: rawError
     });
   }
 };

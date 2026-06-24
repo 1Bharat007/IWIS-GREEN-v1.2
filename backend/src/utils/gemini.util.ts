@@ -42,5 +42,13 @@ export const executeWithGeminiFallback = async <T>(
     }
   }
 
+  if (lastError) {
+    console.error("========================");
+    console.error("[GEMINI UTIL EXHAUSTED]");
+    console.error("Final Error Message:", lastError?.message);
+    console.error("Final Error Object:", JSON.stringify(lastError, null, 2));
+    console.error("========================");
+  }
+
   throw lastError; // Throw if all available keys have been exhausted and failed
 };
