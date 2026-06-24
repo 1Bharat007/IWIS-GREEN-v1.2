@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, ApiError } from "@/lib/api";
+import { getToken } from "@/lib/session";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 
 type Message = {
@@ -44,6 +45,21 @@ const SUGGESTIONS = [
   },
 ];
 
+// SECURITY FIX: derive a user-scoped localStorage key from the JWT so
+// chat threads are NEVER shared between different accounts on the same device.
+function getChatStorageKey(): string {
+  try {
+    const token = getToken();
+    if (!token) return "ecobot_threads_guest";
+    // JWT payload is the second segment, base64url encoded
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    const userId = payload.id || payload.sub || "unknown";
+    return `ecobot_threads_${userId}`;
+  } catch {
+    return "ecobot_threads_guest";
+  }
+}
+
 export default function ChatPage() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
@@ -54,6 +70,7 @@ export default function ChatPage() {
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const retryTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const storageKey = useRef<string>("");
 
   // Wake up backend on mount
   useEffect(() => {
@@ -88,9 +105,11 @@ export default function ChatPage() {
     wakeServer();
   }, []);
 
-  // Load threads from localStorage
+  // SECURITY FIX: Load threads from user-scoped localStorage key
   useEffect(() => {
-    const saved = localStorage.getItem("ecobot_threads");
+    const key = getChatStorageKey();
+    storageKey.current = key;
+    const saved = localStorage.getItem(key);
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as ChatThread[];
@@ -100,12 +119,13 @@ export default function ChatPage() {
     }
   }, []);
 
-  // Persist threads
+  // Persist threads to user-scoped key
   useEffect(() => {
+    if (!storageKey.current) return;
     if (threads.length > 0) {
-      localStorage.setItem("ecobot_threads", JSON.stringify(threads));
+      localStorage.setItem(storageKey.current, JSON.stringify(threads));
     } else {
-      localStorage.removeItem("ecobot_threads");
+      localStorage.removeItem(storageKey.current);
     }
   }, [threads]);
 
@@ -204,7 +224,7 @@ export default function ChatPage() {
         method: "POST",
         body: JSON.stringify({
           message: userMsg.text,
-          history: updatedMessages.slice(0, -1), // history without the current msg
+          history: updatedMessages.slice(0, -1),
         }),
       });
 
@@ -218,36 +238,36 @@ export default function ChatPage() {
     } catch (error: any) {
       console.error("EcoBot error:", error);
 
-      const isConnectionError =
-        error?.message?.includes("Failed to connect") ||
+      // BUGFIX: Use ApiError.backendMessage directly — no JSON parsing needed
+      // because apiFetch now pre-parses the backend response.
+      const isNetworkError =
+        error?.statusCode === 0 ||
         error?.message?.includes("Failed to fetch");
 
-      let errorText = "😔 EcoBot couldn't respond. Please try sending your message again.";
-      if (!isConnectionError && error?.message) {
-        try {
-          const parsed = JSON.parse(error.message);
-          if (parsed.error) errorText = parsed.error;
-        } catch {
-          errorText = error.message;
-        }
+      let errorText: string;
+      if (isNetworkError) {
+        errorText = "⚡ Server is waking up — retrying in 8 seconds…";
+      } else if (error instanceof ApiError) {
+        // backendMessage is already the clean string from the backend JSON
+        errorText = `⚠️ ${error.backendMessage}`;
+      } else {
+        errorText = `😔 EcoBot error: ${error?.message || "Unknown error"}`;
       }
 
       const errMsg: Message = {
         role: "model",
         isError: true,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        text: isConnectionError
-          ? "⚡ Server is waking up — retrying in 8 seconds…"
-          : errorText,
-        retryPayload: isConnectionError
+        text: errorText,
+        retryPayload: isNetworkError
           ? { message: messageText, history: updatedMessages.slice(0, -1) }
           : undefined,
       };
 
       appendMessage(threadId, errMsg);
 
-      // Auto-retry once for connection errors
-      if (isConnectionError) {
+      // Auto-retry once for network errors
+      if (isNetworkError) {
         let countdown = 8;
         setRetryCountdown(countdown);
         const tick = setInterval(() => {
@@ -255,7 +275,6 @@ export default function ChatPage() {
           if (countdown <= 0) {
             clearInterval(tick);
             setRetryCountdown(null);
-            // Retry the message
             setLoading(false);
             handleRetry(messageText, updatedMessages.slice(0, -1), threadId);
             return;
@@ -263,7 +282,6 @@ export default function ChatPage() {
           setRetryCountdown(countdown);
         }, 1000);
         retryTimerRef.current = tick;
-        // Return early so setLoading(false) below doesn't prematurely clear
         return;
       }
     } finally {
@@ -279,12 +297,10 @@ export default function ChatPage() {
         body: JSON.stringify({ message, history }),
       });
 
-      // Replace the error message with the real reply
       setThreads((prev) =>
         prev.map((t) => {
           if (t.id !== threadId) return t;
           const msgs = [...t.messages];
-          // Remove the last error message
           const lastIdx = msgs.map((m) => m.isError).lastIndexOf(true);
           if (lastIdx !== -1) msgs.splice(lastIdx, 1);
           msgs.push({
@@ -295,9 +311,10 @@ export default function ChatPage() {
           return { ...t, messages: msgs };
         })
       );
-    } catch {
+    } catch (err: any) {
+      const errMsg = err instanceof ApiError ? err.backendMessage : (err?.message || "Unknown error");
       updateLastMessage(threadId, {
-        text: "😔 Still unable to reach EcoBot. The server may be down. Please try again manually.",
+        text: `😔 Still unable to reach EcoBot: ${errMsg}`,
         retryPayload: undefined,
       });
     } finally {

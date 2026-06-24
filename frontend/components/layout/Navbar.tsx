@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { clearToken, getToken } from "@/lib/session";
+import { getUser } from "@/lib/authStore";
 import {
   MenuIcon, XIcon, ScanIcon, LayoutIcon, HistoryIcon,
   MapPinIcon, ShoppingIcon, TrophyIcon, BotIcon, SettingsIcon, LogOutIcon, UserIcon,
@@ -33,7 +34,19 @@ export default function Navbar() {
   const isActive = (path: string) => pathname === path;
 
   const handleLogout = () => {
+    // SECURITY FIX: clear user-scoped chat threads so next user on this
+    // device cannot see the previous user's conversation history.
+    try {
+      const token = getToken();
+      if (token) {
+        const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        const userId = payload.id || payload.sub || "unknown";
+        localStorage.removeItem(`ecobot_threads_${userId}`);
+      }
+    } catch { /* best-effort */ }
     clearToken();
+    localStorage.removeItem("iwis-user");
+    localStorage.removeItem("iwis-impact");
     setUserOpen(false);
     router.push("/login");
   };

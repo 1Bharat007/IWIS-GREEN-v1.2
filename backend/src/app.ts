@@ -60,6 +60,10 @@ app.use("/api/waste", wasteRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/marketplace", marketplaceRoutes);
 
+// Debug endpoint — shows Gemini config status without exposing keys
+import { debugGemini } from "./controllers/debug.controller";
+app.get("/api/debug/gemini", debugGemini);
+
 app.get("/", (_, res) => {
   res.send("IWIS Backend Running");
 });
