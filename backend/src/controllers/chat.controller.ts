@@ -36,9 +36,9 @@ Always be encouraging and positive about green actions.`;
       contents.push({ role: "user", parts: [{ text: message }] });
     }
 
-    // 25 second timeout for Gemini
+    // 60 second timeout for Gemini
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("TIMEOUT")), 25000)
+      setTimeout(() => reject(new Error("TIMEOUT")), 60000)
     );
 
     const geminiPromise = executeWithGeminiFallback((ai) =>
