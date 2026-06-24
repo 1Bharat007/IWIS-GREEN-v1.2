@@ -6,7 +6,7 @@ import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import { tierConfig } from "@/components/ui/Icons";
 
 interface LeaderboardUser {
-  email:       string;
+  displayName: string;
   totalCO2:    number;
   totalScans:  number;
   tier:        string;
@@ -74,7 +74,7 @@ export default function LeaderboardPage() {
             <div className="divide-y divide-[var(--border)]">
               {leaders.map((leader, i) => {
                 const tier = tierConfig(leader.tier);
-                const handle = leader.email.split("@")[0];
+                const handle = leader.displayName || "User";
                 const isTop3 = i < 3;
                 return (
                   <div
@@ -92,7 +92,7 @@ export default function LeaderboardPage() {
                     <div className="col-span-5 pl-3 flex items-center gap-2.5">
                       <div className="w-7 h-7 rounded-full bg-[var(--surface-raised)] border border-[var(--border)] flex items-center justify-center shrink-0">
                         <span className="text-xs font-semibold text-[var(--text-secondary)]">
-                          {handle[0]?.toUpperCase()}
+                          {handle.charAt(0).toUpperCase() || "?"}
                         </span>
                       </div>
                       <span className="text-sm font-medium text-[var(--text-primary)] truncate max-w-[120px] sm:max-w-[200px]">
