@@ -60,6 +60,13 @@ function getChatStorageKey(): string {
   }
 }
 
+const CHAT_STAGES = [
+  { label: "Understanding your question…", minDelay: 0 },
+  { label: "Searching sustainability knowledge base…", minDelay: 2000 },
+  { label: "Analyzing environmental context…", minDelay: 6000 },
+  { label: "Generating response…", minDelay: 12000 },
+];
+
 export default function ChatPage() {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
