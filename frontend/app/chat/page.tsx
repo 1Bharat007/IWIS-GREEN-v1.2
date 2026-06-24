@@ -222,13 +222,23 @@ export default function ChatPage() {
         error?.message?.includes("Failed to connect") ||
         error?.message?.includes("Failed to fetch");
 
+      let errorText = "😔 EcoBot couldn't respond. Please try sending your message again.";
+      if (!isConnectionError && error?.message) {
+        try {
+          const parsed = JSON.parse(error.message);
+          if (parsed.error) errorText = parsed.error;
+        } catch {
+          errorText = error.message;
+        }
+      }
+
       const errMsg: Message = {
         role: "model",
         isError: true,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         text: isConnectionError
           ? "⚡ Server is waking up — retrying in 8 seconds…"
-          : "😔 EcoBot couldn't respond. Please try sending your message again.",
+          : errorText,
         retryPayload: isConnectionError
           ? { message: messageText, history: updatedMessages.slice(0, -1) }
           : undefined,

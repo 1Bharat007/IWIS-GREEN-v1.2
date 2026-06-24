@@ -68,7 +68,7 @@ Always be encouraging and positive about green actions.`;
     }
 
     res.status(500).json({
-      error: "EcoBot is unavailable right now. Please try again in a moment.",
+      error: `[Backend Error] ${error?.message || "Unknown server error"}`,
       retryable: true,
     });
   }
