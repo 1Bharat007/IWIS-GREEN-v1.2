@@ -1,6 +1,8 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Navbar from "@/components/layout/Navbar";
+import { TaskProvider } from "@/components/providers/TaskProvider";
+import { TaskOverlay } from "@/components/layout/TaskOverlay";
 
 export const metadata: Metadata = {
   title: "IWIS — Intelligent Waste Information System",
@@ -22,10 +24,13 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased bg-[var(--bg)] text-[var(--text-primary)] min-h-screen">
-        <Navbar />
-        <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-          {children}
-        </main>
+        <TaskProvider>
+          <Navbar />
+          <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+            {children}
+          </main>
+          <TaskOverlay />
+        </TaskProvider>
       </body>
     </html>
   );

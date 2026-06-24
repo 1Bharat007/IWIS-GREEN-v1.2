@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import { UploadIcon, CheckIcon, AlertIcon, RefreshIcon } from "@/components/ui/Icons";
+import { useTasks } from "@/components/providers/TaskProvider";
 
 const CATEGORY_LABELS: Record<string, string> = {
   Plastic: "Plastic",
@@ -37,8 +38,11 @@ type ScanResult = {
 type ServerStatus = "checking" | "ready" | "waking" | "offline";
 
 export default function ScanPage() {
+  const { startTask, updateTaskProgress, completeTask, failTask, getTask, dismissTask } = useTasks();
+  
+  const scanTask = getTask("global_scan");
+  
   const [result,       setResult]       = useState<ScanResult | null>(null);
-  const [loading,      setLoading]      = useState(false);
   const [preview,      setPreview]      = useState<string | null>(null);
   const [error,        setError]        = useState<string | null>(null);
   const [progress,     setProgress]     = useState(0);
@@ -48,6 +52,20 @@ export default function ScanPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const progressRef  = useRef<NodeJS.Timeout | null>(null);
   const stageRef     = useRef<NodeJS.Timeout | null>(null);
+
+  const loading = scanTask?.status === "running";
+
+  // Sync global task state to local component state on mount/update
+  useEffect(() => {
+    if (scanTask) {
+      if (scanTask.status === "success" && scanTask.payload) {
+        setResult(scanTask.payload);
+        setPreview(scanTask.payload.preview || null); // Recover image from payload if available
+      } else if (scanTask.status === "error" && scanTask.error) {
+        setError(scanTask.error);
+      }
+    }
+  }, [scanTask?.status, scanTask?.payload, scanTask?.error]);
 
   useEffect(() => {
     const wakeServer = async () => {
@@ -89,7 +107,13 @@ export default function ScanPage() {
 
       // Advance stage based on progress
       const nextStage = SCAN_STAGES.findIndex((st, i) => i > s && p >= st.minProgress);
-      if (nextStage !== -1) { s = nextStage; setStageIdx(s); }
+      if (nextStage !== -1) { 
+        s = nextStage; 
+        setStageIdx(s); 
+        updateTaskProgress("global_scan", SCAN_STAGES[s].label, Math.min(p, 88));
+      } else {
+        updateTaskProgress("global_scan", SCAN_STAGES[s].label, Math.min(p, 88));
+      }
     }, 200);
   };
 
@@ -98,6 +122,7 @@ export default function ScanPage() {
     if (stageRef.current)    clearInterval(stageRef.current);
     setProgress(100);
     setStageIdx(SCAN_STAGES.length - 1);
+    updateTaskProgress("global_scan", "Complete", 100);
     setTimeout(() => setProgress(0), 600);
   };
 
@@ -108,9 +133,9 @@ export default function ScanPage() {
     }
     const reader = new FileReader();
     reader.onloadend = async () => {
-      setLoading(true);
       setResult(null);
       setError(null);
+      startTask("global_scan", "scan", "AI Waste Scan");
       startProgress();
       const base64 = reader.result as string;
       setPreview(base64);
@@ -132,7 +157,8 @@ export default function ScanPage() {
           body: JSON.stringify({ image: base64, lat, lng }),
         });
         finishProgress();
-        setResult(data);
+        // Stash the preview image inside the payload so we can recover it if returning from another page
+        completeTask("global_scan", { ...data, preview: base64 });
       } catch (err: any) {
         finishProgress();
         const msg = err instanceof ApiError
@@ -140,10 +166,8 @@ export default function ScanPage() {
           : err?.message?.includes("Failed to fetch")
             ? "Server is starting up — please wait 15 seconds and try again."
             : err?.message || "Scan failed. Please try again.";
-        setError(msg);
+        failTask("global_scan", msg);
         setPreview(null);
-      } finally {
-        setLoading(false);
       }
     };
     reader.readAsDataURL(file);
@@ -155,6 +179,7 @@ export default function ScanPage() {
     setError(null);
     setProgress(0);
     setStageIdx(0);
+    dismissTask("global_scan");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
