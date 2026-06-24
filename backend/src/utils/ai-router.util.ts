@@ -24,6 +24,7 @@ export const executeWithModelRouter = async <T>(
     process.env.GEMINI_API_KEY,
     process.env.GEMINI_API_KEY_2,
     process.env.GEMINI_API_KEY_3,
+    process.env.GEMINI_API_KEY_4,
   ].filter(Boolean) as string[];
 
   if (keys.length === 0) {
