@@ -272,7 +272,7 @@ export default function DashboardPage() {
             <br />
             Methodology: Scope 3 Category 5 (Waste Generated in Operations). Tree absorption rate: 21 kg CO₂/year. Vehicle emission rate: 251 g CO₂/km.
           </p>
-        </div>>
+        </div>
       </div>
     </ProtectedRoute>
   );
