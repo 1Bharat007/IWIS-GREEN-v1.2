@@ -67,8 +67,17 @@ Always be encouraging and positive about green actions.`;
       });
     }
 
+    const rawError = error?.message || "Unknown server error";
+    let userFriendlyError = "EcoBot couldn't respond. Please try again.";
+
+    if (rawError.includes("UNAVAILABLE") || rawError.includes("503")) {
+      userFriendlyError = "EcoBot is temporarily unavailable due to high demand. Please try again in 30 seconds.";
+    } else if (rawError.includes("TIMEOUT")) {
+      userFriendlyError = "EcoBot took too long to respond. Please try again.";
+    }
+
     res.status(500).json({
-      error: `[Backend Error] ${error?.message || "Unknown server error"}`,
+      error: userFriendlyError,
       retryable: true,
     });
   }
