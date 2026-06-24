@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
-import { executeWithGeminiFallback } from "../utils/gemini.util";
+import { executeWithModelRouter } from "../utils/ai-router.util";
+import { getLocalResponse } from "../utils/local-kb.util";
 
 export const handleChat = async (req: any, res: Response) => {
   try {
@@ -9,6 +10,15 @@ export const handleChat = async (req: any, res: Response) => {
       return res.status(400).json({ error: "Message is required." });
     }
 
+    // 1. Local Knowledge Base Check (Instant Response)
+    const localReply = getLocalResponse(message);
+    if (localReply) {
+      // Simulate slight human-like typing delay (optional, but good UX for instant bots)
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return res.json({ reply: localReply });
+    }
+
+    // 2. Prepare Gemini Prompt
     const systemInstruction = `You are EcoBot, a helpful AI assistant for the IWIS (Integrated Waste Intelligence System) platform. 
 Your purpose is to help users with: climate change, environmental sustainability, recycling best practices, waste management, eco-friendly habits, and how to earn/use Green Points in IWIS.
 Keep responses concise (2-4 sentences), factual, and actionable.
@@ -36,17 +46,25 @@ Always be encouraging and positive about green actions.`;
       contents.push({ role: "user", parts: [{ text: message }] });
     }
 
-    // 60 second timeout for Gemini
+    // 3. Execute with AI Router
+    // 15s timeout per attempt, allowing failovers to trigger quickly
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("TIMEOUT")), 60000)
+      setTimeout(() => {
+        const err: any = new Error("TIMEOUT");
+        err.status = 504; // Mark as retryable for the router
+        reject(err);
+      }, 15000)
     );
 
-    const geminiPromise = executeWithGeminiFallback((ai) =>
-      ai.models.generateContent({
-        model: "gemini-flash-latest",
-        contents,
-        config: { systemInstruction },
-      })
+    const geminiPromise = executeWithModelRouter(
+      (ai, modelName) =>
+        ai.models.generateContent({
+          model: modelName,
+          contents,
+          config: { systemInstruction },
+        }),
+      "gemini-3.5-flash", // Primary
+      ["gemini-2.5-flash", "gemini-2.0-flash-lite-001"] // Fallbacks
     );
 
     const response = await Promise.race([geminiPromise, timeoutPromise]);
@@ -62,27 +80,16 @@ Always be encouraging and positive about green actions.`;
     console.error("[CHAT CONTROLLER ERROR]");
     console.error("Message:", error?.message);
     console.error("Status:", error?.status);
-    console.error("Name:", error?.name);
     console.error("Stack:", error?.stack);
-    console.error("Raw Object:", JSON.stringify(error, null, 2));
     console.error("========================");
 
-    const rawError = error?.message || "Unknown server error";
-    let userFriendlyError = "EcoBot couldn't respond. Please try again.";
-
-    // Expose the raw error during debug mode
-    if (rawError.includes("UNAVAILABLE") || rawError.includes("503")) {
-      userFriendlyError = "EcoBot is temporarily unavailable due to high demand. Please try again in 30 seconds.";
-    } else if (rawError.includes("TIMEOUT")) {
-      userFriendlyError = "EcoBot took too long to respond. Please try again.";
-    } else {
-      userFriendlyError = `[DEBUG] EcoBot couldn't respond: ${rawError.substring(0, 100)}`;
-    }
+    // If we reach here, ALL models and ALL retries failed.
+    const userFriendlyError = "EcoBot is experiencing exceptionally high demand. Please try again in a few moments.";
 
     res.status(500).json({
       error: userFriendlyError,
       retryable: true,
-      debug: rawError
+      debug: error?.message
     });
   }
 };

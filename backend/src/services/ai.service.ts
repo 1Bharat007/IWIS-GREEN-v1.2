@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { executeWithGeminiFallback } from "../utils/gemini.util";
+import { executeWithModelRouter } from "../utils/ai-router.util";
 import { ApiError } from "../utils/errors";
 
 type ScanResult = {
@@ -56,26 +56,45 @@ Rules:
 - If the image is blurry, ambiguous, or not clearly waste, set confidence below 60
 - Never guess with false certainty — lower confidence is more trustworthy than wrong certainty`;
 
-  const response = await executeWithGeminiFallback((ai) =>
-    ai.models.generateContent({
-      model: "gemini-flash-latest",
-      contents: [
-        prompt,
-        {
-          inlineData: {
-            data: base64Data,
-            mimeType,
-          },
-        },
-      ],
-      config: {
-        responseMimeType: "application/json",
-      },
-    })
+  // 15-second timeout per attempt to allow fast cascading fallbacks
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => {
+      const err: any = new Error("TIMEOUT");
+      err.status = 504; // Marks error as retryable for the router
+      reject(err);
+    }, 15000)
   );
 
+  const geminiPromise = executeWithModelRouter(
+    (ai, modelName) =>
+      ai.models.generateContent({
+        model: modelName,
+        contents: [
+          prompt,
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType,
+            },
+          },
+        ],
+        config: {
+          responseMimeType: "application/json",
+        },
+      }),
+    "gemini-3.1-flash-lite", // Primary fast model for vision
+    ["gemini-3.1-flash-image", "gemini-2.5-flash"] // Fallbacks
+  );
+
+  const response = await Promise.race([geminiPromise, timeoutPromise]);
   const text = (response as any).text || "{}";
-  const parsed = JSON.parse(text);
+  
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    throw new Error("Failed to parse JSON response from AI");
+  }
 
   const category: string = parsed?.primary?.category || "Other";
   const confidence: number =
