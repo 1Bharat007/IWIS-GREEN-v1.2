@@ -45,8 +45,8 @@ export const executeWithModelRouter = async <T>(
     for (let modelIdx = 0; modelIdx < modelsToTry.length; modelIdx++) {
       const targetModel = modelsToTry[modelIdx];
 
-      // Retry mechanism per model (Attempt 1, Wait 2s, Attempt 2, Wait 5s, Attempt 3)
-      const retries = [0, 2000, 5000]; 
+      // Retry mechanism per model (Attempt 1, Wait 1s, Attempt 2)
+      const retries = [0, 1000]; 
 
       for (let retryAttempt = 0; retryAttempt < retries.length; retryAttempt++) {
         if (retries[retryAttempt] > 0) {
@@ -75,11 +75,11 @@ export const executeWithModelRouter = async <T>(
           const msg = error?.message || String(error);
           
           // Determine if we should retry this specific model
-          const isRetryable = status === 429 || status === 503 || msg.includes("TIMEOUT");
+          const isRetryable = status === 429 || status === 503 || status === 500 || msg.includes("TIMEOUT");
 
           if (!isRetryable) {
-             // For structural errors (e.g., 400 Bad Request, auth failures), don't retry the same model
-             console.warn(`[Gemini Router] Non-retryable error on model ${targetModel}:`, msg);
+             // For structural errors (e.g., 400 Bad Request, 404 Not Found, auth failures), don't retry the same model
+             console.warn(`[Gemini Router] Non-retryable error (${status}) on model ${targetModel}:`, msg);
              break; // break out of retry loop, move to next model/key
           }
 

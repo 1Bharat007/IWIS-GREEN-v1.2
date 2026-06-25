@@ -19,10 +19,14 @@ const transporter = nodemailer.createTransport({
 // ─── SIGN UP ─────────────────────────────────────────────────────────────────
 export const signup = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role = "citizen" } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password required" });
+    }
+
+    if (role !== "citizen" && role !== "recycler") {
+      return res.status(400).json({ message: "Invalid role selected" });
     }
 
     const db = await getDB();
@@ -38,14 +42,14 @@ export const signup = async (req: Request, res: Response) => {
 
     await db.run(
       "INSERT INTO users (id, email, password, role, createdAt) VALUES (?, ?, ?, ?, ?)",
-      [id, email, hashed, "citizen", new Date().toISOString()]
+      [id, email, hashed, role, new Date().toISOString()]
     );
 
-    const token = jwt.sign({ id, role: "citizen" }, JWT_SECRET, {
+    const token = jwt.sign({ id, role }, JWT_SECRET, {
       expiresIn: "7d",
     });
 
-    res.json({ token });
+    res.json({ token, role });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Signup failed" });
@@ -73,7 +77,7 @@ export const login = async (req: Request, res: Response) => {
       expiresIn: "7d",
     });
 
-    res.json({ token });
+    res.json({ token, role: user.role });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Login failed" });
@@ -193,7 +197,7 @@ export const getMe = async (req: any, res: Response) => {
   try {
     const db = await getDB();
     const user = await db.get(
-      "SELECT id, email, displayName, totalScans, totalCO2, streak, tier, greenPoints FROM users WHERE id = ?",
+      "SELECT id, email, displayName, role, totalScans, totalCO2, streak, tier, greenPoints FROM users WHERE id = ?",
       req.user.id
     );
     if (!user) return res.status(404).json({ message: "User not found" });

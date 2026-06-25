@@ -33,6 +33,7 @@ type ScanResult = {
   streak:        number;
   alternatives?: { category: string; confidence: number }[];
   lowConfidence?: boolean;
+  estimatedPricePerKg?: number | null;
 };
 
 type ServerStatus = "checking" | "ready" | "waking" | "offline";
@@ -321,16 +322,34 @@ export default function ScanPage() {
 
               {/* Data */}
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-4">
+                
+                {/* 1. Estimated Value */}
+                <div className="p-3 rounded-lg bg-[var(--accent-subtle)] border border-[var(--accent-border)]">
+                  <p className="text-2xs font-semibold text-[var(--accent-text)] uppercase tracking-wider mb-1">
+                    Estimated Value
+                  </p>
+                  {result.estimatedPricePerKg != null ? (
+                    <p className="text-xl font-bold text-[var(--accent-text)]">
+                      ₹{result.estimatedPricePerKg}/kg
+                    </p>
+                  ) : (
+                    <p className="text-sm font-medium text-[var(--text-secondary)]">
+                      Current market price unavailable.
+                    </p>
+                  )}
+                </div>
+
+                {/* 2. Material Type */}
                 <div>
                   <p className="text-2xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
                     Detected Material
                   </p>
-                  <p className="text-xl font-semibold text-[var(--text-primary)]">
+                  <p className="text-lg font-semibold text-[var(--text-primary)]">
                     {CATEGORY_LABELS[result.category] ?? result.category}
                   </p>
                 </div>
 
-                {/* Confidence — with trust tier */}
+                {/* 3. Confidence — with trust tier */}
                 <div>
                   <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-1.5">
                     <span>AI Confidence</span>
@@ -378,7 +397,7 @@ export default function ScanPage() {
                   </div>
                 )}
 
-                {/* Metrics */}
+                {/* 4. Environmental Impact Metrics */}
                 <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[var(--border)]">
                   {[
                     { label: "CO₂ Avoided",  value: `+${result.co2} kg` },
@@ -403,13 +422,21 @@ export default function ScanPage() {
               </div>
             )}
 
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
-            >
-              <RefreshIcon size={13} />
-              Scan another item
-            </button>
+            <div className="grid grid-cols-2 gap-3">
+              <a
+                href={`/sell?material=${result.category}`}
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--bg)] text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                Create Listing
+              </a>
+              <button
+                onClick={handleReset}
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-[var(--border)] text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
+              >
+                <RefreshIcon size={13} />
+                Scan another item
+              </button>
+            </div>
           </div>
         )}
       </div>

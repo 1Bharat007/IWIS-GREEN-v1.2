@@ -7,8 +7,19 @@ import { clearToken, getToken } from "@/lib/session";
 import { getUser } from "@/lib/authStore";
 import {
   MenuIcon, XIcon, ScanIcon, LayoutIcon, HistoryIcon,
-  MapPinIcon, ShoppingIcon, TrophyIcon, BotIcon, SettingsIcon, LogOutIcon, UserIcon,
+  MapPinIcon, ShoppingIcon, TrophyIcon, BotIcon, SettingsIcon, LogOutIcon, UserIcon, SunIcon, MoonIcon, ArrowRightIcon, BarChartIcon
 } from "@/components/ui/Icons";
+
+function getRoleFromToken(): string | null {
+  try {
+    const token = typeof window !== "undefined" ? localStorage.getItem("iwis_token") : null;
+    if (!token) return null;
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload.role || "citizen";
+  } catch {
+    return null;
+  }
+}
 
 const PRIMARY_NAV = [
   { name: "Scan",      path: "/scan",        Icon: ScanIcon },
@@ -29,6 +40,8 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userOpen,   setUserOpen]   = useState(false);
   const [authed,     setAuthed]     = useState(false);
+  const [isDark,     setIsDark]     = useState(false);
+  const [userRole,   setUserRole]   = useState<string | null>(null);
   const userRef = useRef<HTMLDivElement>(null);
 
   const isActive = (path: string) => pathname === path;
@@ -51,8 +64,29 @@ export default function Navbar() {
     router.push("/login");
   };
 
-  useEffect(() => { setAuthed(!!getToken()); }, [pathname]);
+  useEffect(() => {
+    const hasToken = !!getToken();
+    setAuthed(hasToken);
+    setUserRole(hasToken ? getRoleFromToken() : null);
+  }, [pathname]);
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+  
+  useEffect(() => {
+    // Initial theme check
+    setIsDark(document.documentElement.classList.contains("dark"));
+  }, []);
+
+  const toggleTheme = () => {
+    if (document.documentElement.classList.contains("dark")) {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "Light");
+      setIsDark(false);
+    } else {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "Dark");
+      setIsDark(true);
+    }
+  };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -99,10 +133,59 @@ export default function Navbar() {
                 </Link>
               );
             })}
+            {/* Role-aware transaction links */}
+            {authed && userRole === "citizen" && (
+              <Link
+                href="/sell"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  pathname.startsWith("/sell")
+                    ? "bg-[var(--accent-subtle)] text-[var(--accent-text)] border border-[var(--accent-border)]"
+                    : "text-[var(--accent-text)] hover:bg-[var(--accent-subtle)]"
+                }`}
+              >
+                <ShoppingIcon size={13} />
+                Sell Waste
+              </Link>
+            )}
+            {authed && userRole === "recycler" && (
+              <Link
+                href="/recycler/feed"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  pathname.startsWith("/recycler")
+                    ? "bg-[var(--accent-subtle)] text-[var(--accent-text)] border border-[var(--accent-border)]"
+                    : "text-[var(--accent-text)] hover:bg-[var(--accent-subtle)]"
+                }`}
+              >
+                <ArrowRightIcon size={13} />
+                Pickup Feed
+              </Link>
+            )}
+            {authed && (
+              <Link
+                href="/earnings"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  pathname.startsWith("/earnings")
+                    ? "bg-[var(--surface-raised)] text-[var(--text-primary)]"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)]"
+                }`}
+              >
+                <BarChartIcon size={13} />
+                Earnings
+              </Link>
+            )}
           </div>
 
           {/* Right: user + mobile toggle */}
           <div className="flex items-center gap-2 shrink-0">
+            
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="flex items-center justify-center w-8 h-8 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors"
+              aria-label="Toggle dark mode"
+            >
+              {isDark ? <SunIcon size={15} /> : <MoonIcon size={15} />}
+            </button>
 
             {/* User menu — desktop */}
             <div className="hidden md:block relative" ref={userRef}>
@@ -202,6 +285,26 @@ export default function Navbar() {
                 </Link>
               );
             })}
+
+            {/* Role-aware mobile links */}
+            {authed && userRole === "citizen" && (
+              <Link href="/sell" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname.startsWith("/sell") ? "bg-[var(--accent-subtle)] text-[var(--accent-text)]" : "text-[var(--accent-text)] hover:bg-[var(--accent-subtle)]"}`}>
+                <ShoppingIcon size={14} />
+                Sell Waste
+              </Link>
+            )}
+            {authed && userRole === "recycler" && (
+              <Link href="/recycler/feed" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname.startsWith("/recycler") ? "bg-[var(--accent-subtle)] text-[var(--accent-text)]" : "text-[var(--accent-text)] hover:bg-[var(--accent-subtle)]"}`}>
+                <ArrowRightIcon size={14} />
+                Pickup Feed
+              </Link>
+            )}
+            {authed && (
+              <Link href="/earnings" className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname.startsWith("/earnings") ? "bg-[var(--surface-raised)] text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"}`}>
+                <BarChartIcon size={14} />
+                Earnings
+              </Link>
+            )}
 
             <div className="pt-4 mt-4 border-t border-[var(--border)] space-y-1">
               <p className="text-2xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider px-3 pb-2">

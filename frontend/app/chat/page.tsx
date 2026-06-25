@@ -67,23 +67,9 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (chatTask?.status === "success" && chatTask.payload) {
-      const currentThread = threads.find((t) => t.id === chatTask.payload.threadId);
-      if (currentThread) {
-        const botMsg: Message = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: chatTask.payload.reply,
-          timestamp: new Date().toISOString(),
-        };
-        const updated = threads.map((t) =>
-          t.id === currentThread.id ? { ...t, messages: [...t.messages, botMsg] } : t
-        );
-        setThreads(updated);
-        localStorage.setItem(storageKey.current, JSON.stringify(updated));
-      }
       dismissTask("global_chat");
     }
-  }, [chatTask?.status, chatTask?.payload, threads, dismissTask]);
+  }, [chatTask?.status, chatTask?.payload, dismissTask]);
 
   useEffect(() => {
     const wakeServer = async () => {
@@ -202,6 +188,22 @@ export default function ChatPage() {
         body: JSON.stringify({ message: messageText.trim(), history }),
       });
       if (stageRef.current) clearInterval(stageRef.current);
+      
+      // FIX: Update local storage directly in closure so it survives unmounting
+      const saved = localStorage.getItem(storageKey.current);
+      if (saved) {
+        try {
+          const parsedThreads = JSON.parse(saved);
+          const updatedThreads = parsedThreads.map((t: ChatThread) => 
+            t.id === threadId 
+              ? { ...t, messages: [...t.messages, { id: crypto.randomUUID(), role: "assistant", content: response.reply, timestamp: new Date().toISOString() }] } 
+              : t
+          );
+          localStorage.setItem(storageKey.current, JSON.stringify(updatedThreads));
+          setThreads(updatedThreads); // Update state if still mounted
+        } catch {}
+      }
+
       completeTask("global_chat", { reply: response.reply, threadId });
     } catch (error: any) {
       if (stageRef.current) clearInterval(stageRef.current);
@@ -209,7 +211,18 @@ export default function ChatPage() {
       const errorText = isNetworkError ? "⚡ Server is waking up — please try again." : error instanceof ApiError ? `⚠️ ${error.backendMessage}` : `😔 EcoBot error: ${error?.message || "Unknown error"}`;
       failTask("global_chat", errorText);
       const errMsg: Message = { id: crypto.randomUUID(), role: "assistant", isError: true, timestamp: new Date().toISOString(), content: errorText };
-      setThreads(prev => prev.map(t => t.id === threadId ? { ...t, messages: [...t.messages, errMsg] } : t));
+      
+      const saved = localStorage.getItem(storageKey.current);
+      if (saved) {
+        try {
+          const parsedThreads = JSON.parse(saved);
+          const updatedThreads = parsedThreads.map((t: ChatThread) => 
+            t.id === threadId ? { ...t, messages: [...t.messages, errMsg] } : t
+          );
+          localStorage.setItem(storageKey.current, JSON.stringify(updatedThreads));
+          setThreads(updatedThreads); // Update state if still mounted
+        } catch {}
+      }
     }
   }, [threads, activeThreadId, loading, startTask, completeTask, failTask, updateTaskProgress]);
 

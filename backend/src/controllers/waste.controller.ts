@@ -85,14 +85,21 @@ export const scanWaste = async (req: any, res: Response) => {
       Organic: "Compost organic waste to reduce methane emissions.",
     };
 
+    // ─── QUERY SCRAP PRICE ENGINE ─────────────────────────────────────────────
+    const priceRecord = await db.get(
+      "SELECT pricePerKg FROM scrap_prices WHERE material = ? LIMIT 1",
+      result.category
+    );
+    const estimatedPricePerKg = priceRecord ? priceRecord.pricePerKg : null;
+
     res.json({
       ...result,
       tier: newTier,
       streak: newStreak,
       smartTip: tips[result.category] || "Dispose responsibly.",
-      // Pass through alternatives and lowConfidence for trust UI
       alternatives: result.alternatives ?? [],
       lowConfidence: result.lowConfidence ?? false,
+      estimatedPricePerKg,
     });
   } catch (err: any) {
     console.error("[scanWaste] error:", err?.message || err);
@@ -169,8 +176,8 @@ export const getLeaderboard = async (_req: any, res: Response) => {
         : `user_${idx + 1}`;
       return {
         displayName: handle,
-        totalCO2: u.totalCO2,
-        totalScans: u.totalScans,
+        totalCO2: u.totalCO2 || 0,
+        totalScans: u.totalScans || 0,
         tier: u.tier,
         rank: idx + 1,
       };

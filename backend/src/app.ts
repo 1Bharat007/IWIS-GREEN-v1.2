@@ -4,6 +4,10 @@ import authRoutes from "./routes/auth.routes";
 import wasteRoutes from "./routes/waste.routes";
 import chatRoutes from "./routes/chat.routes";
 import marketplaceRoutes from "./routes/marketplace.routes";
+import recyclerRoutes from "./routes/recycler.routes";
+import listingRoutes from "./routes/listing.routes";
+import priceRoutes from "./routes/price.routes";
+import transactionRoutes from "./routes/transaction.routes";
 import { initDB } from "./db";
 
 const app = express();
@@ -59,6 +63,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/waste", wasteRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/marketplace", marketplaceRoutes);
+app.use("/api/recycler", recyclerRoutes);
+app.use("/api/listings", listingRoutes);
+app.use("/api/prices", priceRoutes);
+app.use("/api/transactions", transactionRoutes);
 
 // Debug endpoint — shows Gemini config status without exposing keys
 import { debugGemini } from "./controllers/debug.controller";

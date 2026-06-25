@@ -55,6 +55,7 @@ export default function SignupPage() {
   const [email,       setEmail]       = useState("");
   const [password,    setPassword]    = useState("");
   const [confirm,     setConfirm]     = useState("");
+  const [role,        setRole]        = useState<"citizen" | "recycler">("citizen");
   const [showPwd,     setShowPwd]     = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading,     setLoading]     = useState(false);
@@ -88,10 +89,15 @@ export default function SignupPage() {
       setError("");
       const data = await apiFetch("/auth/signup", {
         method: "POST",
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: email.trim(), password, role }),
       });
       setToken(data.token);
-      router.push("/dashboard");
+      
+      if (role === "recycler") {
+        router.push("/recycler/onboarding");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err.backendMessage || err.message || "Could not create account. Please try again.");
     } finally {
@@ -158,6 +164,49 @@ export default function SignupPage() {
           )}
 
           <form onSubmit={handleSignup} className="space-y-4">
+            {/* Role Selection */}
+            <div className="grid grid-cols-2 gap-3 mb-2">
+              <button
+                type="button"
+                onClick={() => setRole("citizen")}
+                className={`p-3 text-left rounded-xl border transition-all ${
+                  role === "citizen" 
+                    ? "border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]" 
+                    : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-raised)]"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-sm font-semibold ${role === "citizen" ? "text-[var(--accent-text)]" : "text-[var(--text-primary)]"}`}>Citizen</span>
+                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                    role === "citizen" ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--border)]"
+                  }`}>
+                    {role === "citizen" && <CheckIcon size={10} className="text-white" />}
+                  </div>
+                </div>
+                <span className="text-2xs text-[var(--text-secondary)]">I want to sell my waste</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRole("recycler")}
+                className={`p-3 text-left rounded-xl border transition-all ${
+                  role === "recycler" 
+                    ? "border-[var(--accent)] bg-[var(--accent-subtle)] ring-1 ring-[var(--accent)]" 
+                    : "border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-raised)]"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-sm font-semibold ${role === "recycler" ? "text-[var(--accent-text)]" : "text-[var(--text-primary)]"}`}>Recycler</span>
+                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                    role === "recycler" ? "border-[var(--accent)] bg-[var(--accent)]" : "border-[var(--border)]"
+                  }`}>
+                    {role === "recycler" && <CheckIcon size={10} className="text-white" />}
+                  </div>
+                </div>
+                <span className="text-2xs text-[var(--text-secondary)]">I want to collect waste</span>
+              </button>
+            </div>
+
             {/* Email */}
             <div>
               <label htmlFor="signup-email" className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">

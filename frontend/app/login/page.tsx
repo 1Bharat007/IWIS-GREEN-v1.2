@@ -48,7 +48,11 @@ export default function LoginPage() {
         body: JSON.stringify({ email: email.trim(), password }),
       });
       setToken(data.token);
-      router.push("/dashboard");
+      if (data.role === "recycler") {
+        router.push("/recycler/feed");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err.backendMessage || err.message || "Invalid email or password.");
     } finally {

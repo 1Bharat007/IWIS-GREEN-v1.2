@@ -82,8 +82,8 @@ Rules:
           responseMimeType: "application/json",
         },
       }),
-    "gemini-3.1-flash-lite", // Primary fast model for vision
-    ["gemini-3.1-flash-image", "gemini-2.5-flash"] // Fallbacks
+    "gemini-2.5-flash", // Primary fast model for vision
+    ["gemini-1.5-flash", "gemini-1.5-pro"] // Fallbacks
   );
 
   const response = await Promise.race([geminiPromise, timeoutPromise]);
