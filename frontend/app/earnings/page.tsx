@@ -161,11 +161,11 @@ export default function EarningsPage() {
                   <LineChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} tickFormatter={(value) => `₹${value}`} dx={-10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} tickFormatter={(value: number | string | undefined) => `₹${Number(value ?? 0)}`} dx={-10} />
                     <Tooltip 
                       contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--surface)', fontSize: '12px', color: 'var(--text-primary)' }}
                       itemStyle={{ color: 'var(--accent-text)', fontWeight: 600 }}
-                      formatter={(value: number) => [`₹${value.toFixed(2)}`, 'Earnings']}
+                      formatter={(value: number | string | undefined) => [`₹${Number(value ?? 0).toFixed(2)}`, 'Earnings']}
                     />
                     <Line type="monotone" dataKey="earnings" stroke="var(--accent)" strokeWidth={3} dot={{ r: 4, fill: 'var(--accent)', strokeWidth: 0 }} activeDot={{ r: 6 }} />
                   </LineChart>
