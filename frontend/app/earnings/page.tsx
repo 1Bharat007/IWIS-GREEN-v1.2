@@ -96,6 +96,25 @@ export default function EarningsPage() {
           </p>
         </div>
 
+        {/* Payment Transparency Banner */}
+        <div className="p-4 rounded-xl border border-[var(--accent-border)] bg-[var(--accent-subtle)] flex items-start gap-4">
+          <div className="shrink-0 mt-0.5 text-[var(--accent)]">
+            <span className="text-xl">💡</span>
+          </div>
+          <div className="text-sm text-[var(--accent-text)] space-y-2">
+            <p className="font-semibold">This page tracks your recycling earnings.</p>
+            <p>Payments are made directly between you and the recycler during pickup.</p>
+            <div>
+              <span className="font-medium">Supported payment methods:</span>
+              <ul className="list-disc list-inside mt-1 ml-1">
+                <li>Cash</li>
+                <li>UPI</li>
+              </ul>
+            </div>
+            <p className="text-xs opacity-80 pt-1">IWIS records transactions but does not currently process payments.</p>
+          </div>
+        </div>
+
         {!hasEarnings ? (
           <div className="flex flex-col items-center justify-center text-center p-12 rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)]">
             <div className="w-16 h-16 rounded-full bg-[var(--accent-subtle)] flex items-center justify-center text-[var(--accent)] mb-4">

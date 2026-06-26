@@ -3,16 +3,14 @@ import cors from "cors";
 import authRoutes from "./routes/auth.routes";
 import wasteRoutes from "./routes/waste.routes";
 import chatRoutes from "./routes/chat.routes";
-import marketplaceRoutes from "./routes/marketplace.routes";
 import recyclerRoutes from "./routes/recycler.routes";
 import listingRoutes from "./routes/listing.routes";
 import priceRoutes from "./routes/price.routes";
 import transactionRoutes from "./routes/transaction.routes";
-import { initDB } from "./db";
+import notificationRoutes from "./routes/notification.routes";
+import errorMiddleware from "./middleware/error.middleware";
 
 const app = express();
-
-initDB();
 
 app.use(
   cors({
@@ -62,11 +60,11 @@ app.use(express.urlencoded({ limit: "20mb", extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/waste", wasteRoutes);
 app.use("/api/chat", chatRoutes);
-app.use("/api/marketplace", marketplaceRoutes);
 app.use("/api/recycler", recyclerRoutes);
 app.use("/api/listings", listingRoutes);
 app.use("/api/prices", priceRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Debug endpoint — shows Gemini config status without exposing keys
 import { debugGemini } from "./controllers/debug.controller";
@@ -80,5 +78,8 @@ app.get("/", (_, res) => {
 app.get("/api/health", (_, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// Global Error Handler
+app.use(errorMiddleware);
 
 export default app;

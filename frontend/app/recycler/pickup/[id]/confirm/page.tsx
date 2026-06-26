@@ -59,7 +59,7 @@ export default function ConfirmPickupPage() {
           <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckIcon size={40} className="text-green-500" />
           </div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">Pickup Complete!</h1>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">Collection Complete!</h1>
           <p className="text-[var(--text-secondary)] mb-8">
             The transaction has been logged and the citizen's account has been updated.
           </p>
@@ -85,7 +85,7 @@ export default function ConfirmPickupPage() {
             Confirm Collection
           </h1>
           <p className="text-sm text-[var(--text-secondary)]">
-            You are at the pickup location. Weigh the waste and log the final transaction.
+            You are at the collection location. Weigh the waste and log the final transaction.
           </p>
         </div>
 
@@ -127,8 +127,17 @@ export default function ConfirmPickupPage() {
             disabled={loading || !actualWeight}
             className="w-full flex items-center justify-center gap-2 py-4 px-4 rounded-xl bg-[var(--text-primary)] text-[var(--bg)] text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-all shadow-sm"
           >
-            {loading ? "Processing..." : "Complete Pickup & Generate Transaction"}
-            <ArrowRightIcon size={14} />
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Processing...
+              </span>
+            ) : (
+              <>
+                Complete Collection & Generate Transaction
+                <ArrowRightIcon size={14} />
+              </>
+            )}
           </button>
         </form>
       </div>

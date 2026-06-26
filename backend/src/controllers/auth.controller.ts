@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import { z } from "zod";
 import { getDB } from "../db";
 
 const JWT_SECRET = process.env.JWT_SECRET || "iwis_super_secret_key";
@@ -17,38 +18,54 @@ const transporter = nodemailer.createTransport({
 });
 
 // ─── SIGN UP ─────────────────────────────────────────────────────────────────
+const signupSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  role: z.enum(["citizen", "recycler"]).default("citizen"),
+  phone: z.string().min(10, "Valid phone number required"),
+  displayName: z.string().min(2, "Name is required"),
+  preferredLanguage: z.enum(["English", "हिन्दी", "Dogri"]).default("English"),
+  otp: z.string().length(6, "Invalid OTP format")
+});
+
 export const signup = async (req: Request, res: Response) => {
   try {
-    const { email, password, role = "citizen" } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password required" });
+    const parsed = signupSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.errors[0].message });
     }
 
-    if (role !== "citizen" && role !== "recycler") {
-      return res.status(400).json({ message: "Invalid role selected" });
-    }
+    const { email, password, role, phone, displayName, preferredLanguage, otp } = parsed.data;
 
     const db = await getDB();
 
-    const existing = await db.get("SELECT * FROM users WHERE email = ?", email);
+    // Verify OTP
+    const otpRecord = await db.get("SELECT * FROM otp_codes WHERE phone = ? AND otp = ?", [phone, otp]);
+    if (!otpRecord) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+    if (new Date(otpRecord.expiresAt) < new Date()) {
+      return res.status(400).json({ message: "OTP has expired" });
+    }
+
+    // Check existing
+    const existing = await db.get("SELECT * FROM users WHERE email = ? OR phone = ?", [email, phone]);
     if (existing) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ message: "User with this email or phone already exists" });
     }
 
     const hashed = await bcrypt.hash(password, 10);
-
     const id = crypto.randomUUID();
 
     await db.run(
-      "INSERT INTO users (id, email, password, role, createdAt) VALUES (?, ?, ?, ?, ?)",
-      [id, email, hashed, role, new Date().toISOString()]
+      "INSERT INTO users (id, email, password, role, phone, displayName, preferredLanguage, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      [id, email, hashed, role, phone, displayName, preferredLanguage, new Date().toISOString()]
     );
 
-    const token = jwt.sign({ id, role }, JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    // Cleanup OTP
+    await db.run("DELETE FROM otp_codes WHERE phone = ?", [phone]);
 
+    const token = jwt.sign({ id, role }, JWT_SECRET, { expiresIn: "7d" });
     res.json({ token, role });
   } catch (err) {
     console.error(err);
@@ -56,14 +73,108 @@ export const signup = async (req: Request, res: Response) => {
   }
 };
 
+// ─── OTP ENDPOINTS ───────────────────────────────────────────────────────────
+const phoneSchema = z.object({
+  phone: z.string().min(10, "Valid phone number required")
+});
+
+export const sendOtp = async (req: Request, res: Response) => {
+  try {
+    const parsed = phoneSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
+
+    const { phone } = parsed.data;
+    const db = await getDB();
+    
+    // Check phone-level rate limits
+    const existingOTP = await db.get("SELECT * FROM otp_codes WHERE phone = ?", phone);
+    const now = new Date();
+    
+    let hourlyCount = 1;
+    if (existingOTP && existingOTP.lastRequestedAt) {
+      const lastRequest = new Date(existingOTP.lastRequestedAt);
+      const diffMs = now.getTime() - lastRequest.getTime();
+      
+      // 1 per 60 seconds
+      if (diffMs < 60 * 1000) {
+        return res.status(429).json({ message: "Please wait 60 seconds before requesting another OTP." });
+      }
+      
+      // Reset hourly count if older than 1 hour, otherwise increment
+      if (diffMs > 60 * 60 * 1000) {
+        hourlyCount = 1;
+      } else {
+        hourlyCount = (existingOTP.hourlyCount || 0) + 1;
+      }
+      
+      // 5 per hour
+      if (hourlyCount > 5) {
+        return res.status(429).json({ message: "You have exceeded the maximum number of OTP requests (5 per hour). Please try again later." });
+      }
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit random
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 minutes
+
+    await db.run(
+      "INSERT INTO otp_codes (phone, otp, expiresAt, lastRequestedAt, hourlyCount) VALUES (?, ?, ?, ?, ?) ON CONFLICT(phone) DO UPDATE SET otp = excluded.otp, expiresAt = excluded.expiresAt, lastRequestedAt = excluded.lastRequestedAt, hourlyCount = excluded.hourlyCount",
+      [phone, otp, expiresAt, now.toISOString(), hourlyCount]
+    );
+
+    // In production, integrate MSG91 or Twilio here. For now, log to console.
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`\n\n[DEV MOCK SMS] OTP for ${phone} is: ${otp}\n\n`);
+    }
+
+    res.json({ message: "OTP sent successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to send OTP" });
+  }
+};
+
+export const verifyOtp = async (req: Request, res: Response) => {
+  try {
+    const { phone, otp } = req.body;
+    if (!phone || !otp) return res.status(400).json({ message: "Phone and OTP required" });
+
+    const db = await getDB();
+    const otpRecord = await db.get("SELECT * FROM otp_codes WHERE phone = ? AND otp = ?", [phone, otp]);
+    if (!otpRecord) return res.status(400).json({ message: "Invalid OTP" });
+    if (new Date(otpRecord.expiresAt) < new Date()) return res.status(400).json({ message: "OTP has expired" });
+
+    res.json({ message: "OTP verified successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to verify OTP" });
+  }
+};
+
 // ─── LOG IN ──────────────────────────────────────────────────────────────────
+const loginSchema = z.object({
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  password: z.string().min(1, "Password required")
+});
+
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const parsed = loginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.errors[0].message });
+    }
+
+    const { email, phone, password } = parsed.data;
+    if (!email && !phone) return res.status(400).json({ message: "Email or phone required" });
 
     const db = await getDB();
 
-    const user = await db.get("SELECT * FROM users WHERE email = ?", email);
+    let user;
+    if (email) {
+      user = await db.get("SELECT * FROM users WHERE email = ?", email);
+    } else if (phone) {
+      user = await db.get("SELECT * FROM users WHERE phone = ?", phone);
+    }
+
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
@@ -73,11 +184,9 @@ export const login = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
 
-    res.json({ token, role: user.role });
+    res.json({ token, role: user.role, requiresOnboarding: user.role === 'recycler' && !user.isApproved });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Login failed" });
@@ -197,11 +306,37 @@ export const getMe = async (req: any, res: Response) => {
   try {
     const db = await getDB();
     const user = await db.get(
-      "SELECT id, email, displayName, role, totalScans, totalCO2, streak, tier, greenPoints FROM users WHERE id = ?",
+      "SELECT id, email, phone, displayName, role, totalScans, totalCO2, streak, tier, greenPoints, createdAt, isApproved, totalEarnings FROM users WHERE id = ?",
       req.user.id
     );
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(user);
+
+    // Aggregate stats
+    let completedPickups = 0;
+    let successfulListings = 0;
+    let totalWasteRecycledKg = 0;
+    let recyclerRating = 4.8; // Default mock rating
+
+    if (user.role === 'citizen') {
+      const stats = await db.get("SELECT COUNT(*) as count, SUM(estimatedWeightKg) as weight FROM waste_listings WHERE citizenId = ? AND status = 'completed'", user.id);
+      successfulListings = stats?.count || 0;
+      totalWasteRecycledKg = stats?.weight || 0;
+    } else {
+      const stats = await db.get("SELECT COUNT(*) as count, SUM(estimatedWeightKg) as weight FROM waste_listings WHERE recyclerId = ? AND status = 'completed'", user.id);
+      completedPickups = stats?.count || 0;
+      totalWasteRecycledKg = stats?.weight || 0;
+      
+      const rating = await db.get("SELECT averageRating FROM recycler_profiles WHERE userId = ?", user.id);
+      if (rating && rating.averageRating) recyclerRating = rating.averageRating;
+    }
+
+    res.json({
+      ...user,
+      completedPickups,
+      successfulListings,
+      totalWasteRecycledKg,
+      recyclerRating
+    });
   } catch (err) {
     console.error("[getMe] error:", err);
     res.status(500).json({ message: "Failed to load profile." });

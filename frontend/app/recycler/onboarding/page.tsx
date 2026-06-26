@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import { apiFetch } from "@/lib/api";
 import { AlertIcon, CheckIcon, ArrowRightIcon } from "@/components/ui/Icons";
+import { useDraft } from "@/hooks/useDraft";
 
 const MATERIALS = [
   "Plastic",
@@ -18,16 +19,30 @@ const MATERIALS = [
 
 export default function RecyclerOnboarding() {
   const router = useRouter();
-  const [businessName, setBusinessName] = useState("");
-  const [gstin, setGstin] = useState("");
-  const [materials, setMaterials] = useState<string[]>([]);
-  const [radius, setRadius] = useState(5);
+
+  const [draft, setDraft, clearDraft] = useDraft("draft_recycler_onboarding", {
+    businessName: "",
+    gstin: "",
+    materials: [] as string[],
+    radius: 5
+  });
+
+  const businessName = draft.businessName;
+  const gstin = draft.gstin;
+  const materials = draft.materials;
+  const radius = draft.radius;
+
+  const setBusinessName = (v: string) => setDraft({ ...draft, businessName: v });
+  const setGstin = (v: string) => setDraft({ ...draft, gstin: v });
+  const setMaterials = (v: string[]) => setDraft({ ...draft, materials: v });
+  const setRadius = (v: number) => setDraft({ ...draft, radius: v });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const toggleMaterial = (m: string) => {
-    setMaterials((prev) => 
-      prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]
+    setMaterials(
+      materials.includes(m) ? materials.filter((x) => x !== m) : [...materials, m]
     );
   };
 
@@ -52,6 +67,7 @@ export default function RecyclerOnboarding() {
           lng: 74.8570
         })
       });
+      clearDraft();
       router.push("/recycler/feed"); 
     } catch (err: any) {
       setError(err.backendMessage || err.message || "Failed to save profile.");

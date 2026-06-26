@@ -29,11 +29,19 @@ type ScanResult = {
   confidence:    number;
   co2:           number;
   smartTip:      string;
-  tier:          string;
-  streak:        number;
   alternatives?: { category: string; confidence: number }[];
   lowConfidence?: boolean;
   estimatedPricePerKg?: number | null;
+};
+
+type HistoryScan = {
+  id: string;
+  category: string;
+  confidence: number;
+  co2: number;
+  timestamp: string;
+  thumbnail: string | null;
+  estimatedPricePerKg: number | null;
 };
 
 type ServerStatus = "checking" | "ready" | "waking" | "offline";
@@ -50,6 +58,8 @@ export default function ScanPage() {
   const [stageIdx,     setStageIdx]     = useState(0);
   const [isDragging,   setIsDragging]   = useState(false);
   const [serverStatus, setServerStatus] = useState<ServerStatus>("checking");
+  const [recentScans,  setRecentScans]  = useState<HistoryScan[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const progressRef  = useRef<NodeJS.Timeout | null>(null);
   const stageRef     = useRef<NodeJS.Timeout | null>(null);
@@ -95,6 +105,20 @@ export default function ScanPage() {
     wakeServer();
   }, []);
 
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const data = await apiFetch("/waste/history?limit=10");
+        setRecentScans(data.history || []);
+      } catch (err) {
+        console.error("Failed to load history", err);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+    fetchHistory();
+  }, []);
+
   const startProgress = () => {
     setProgress(0);
     setStageIdx(0);
@@ -127,18 +151,72 @@ export default function ScanPage() {
     setTimeout(() => setProgress(0), 600);
   };
 
+  const compressImage = (file: File): Promise<{ base64: string, thumbnail: string }> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+          const max_size = 1000;
+
+          if (width > height && width > max_size) {
+            height *= max_size / width;
+            width = max_size;
+          } else if (height > max_size) {
+            width *= max_size / height;
+            height = max_size;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, width, height);
+          const base64 = canvas.toDataURL("image/jpeg", 0.7);
+
+          // Generate Thumbnail
+          const thumbCanvas = document.createElement("canvas");
+          let thumbW = img.width;
+          let thumbH = img.height;
+          const thumbMax = 200;
+          if (thumbW > thumbH && thumbW > thumbMax) {
+            thumbH *= thumbMax / thumbW;
+            thumbW = thumbMax;
+          } else if (thumbH > thumbMax) {
+            thumbW *= thumbMax / thumbH;
+            thumbH = thumbMax;
+          }
+          thumbCanvas.width = thumbW;
+          thumbCanvas.height = thumbH;
+          const thumbCtx = thumbCanvas.getContext("2d");
+          thumbCtx?.drawImage(img, 0, 0, thumbW, thumbH);
+          const thumbnail = thumbCanvas.toDataURL("image/webp", 0.5);
+
+          resolve({ base64, thumbnail });
+        };
+        img.onerror = (e) => reject(e);
+      };
+      reader.onerror = (e) => reject(e);
+    });
+  };
+
   const handleUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       setError("Please upload a valid image file (JPG, PNG, WEBP).");
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = async () => {
+    
+    try {
       setResult(null);
       setError(null);
       startTask("global_scan", "scan", "AI Waste Scan");
       startProgress();
-      const base64 = reader.result as string;
+      
+      const { base64, thumbnail } = await compressImage(file);
       setPreview(base64);
 
       let lat: number | null = null, lng: number | null = null;
@@ -155,11 +233,22 @@ export default function ScanPage() {
       try {
         const data = await apiFetch("/waste/scan", {
           method: "POST",
-          body: JSON.stringify({ image: base64, lat, lng }),
+          body: JSON.stringify({ image: base64, thumbnail, lat, lng }),
         });
         finishProgress();
         // Stash the preview image inside the payload so we can recover it if returning from another page
         completeTask("global_scan", { ...data, preview: base64 });
+
+        // Prepend to history locally
+        setRecentScans(prev => [{
+          id: Math.random().toString(), // local temporary id
+          category: data.category,
+          confidence: data.confidence,
+          co2: data.co2,
+          timestamp: new Date().toISOString(),
+          thumbnail: thumbnail,
+          estimatedPricePerKg: data.estimatedPricePerKg
+        }, ...prev]);
       } catch (err: any) {
         finishProgress();
         const msg = err instanceof ApiError
@@ -170,8 +259,11 @@ export default function ScanPage() {
         failTask("global_scan", msg);
         setPreview(null);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      setError("Failed to compress image.");
+      finishProgress();
+      failTask("global_scan", "Image processing failed.");
+    }
   };
 
   const handleReset = () => {
@@ -398,12 +490,9 @@ export default function ScanPage() {
                 )}
 
                 {/* 4. Environmental Impact Metrics */}
-                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[var(--border)]">
+                <div className="grid grid-cols-1 gap-3 pt-3 border-t border-[var(--border)]">
                   {[
                     { label: "CO₂ Avoided",  value: `+${result.co2} kg` },
-                    { label: "Points Earned", value: "+10 pts" },
-                    { label: "Your Tier",     value: result.tier },
-                    { label: "Streak",        value: `${result.streak} days` },
                   ].map(({ label, value }) => (
                     <div key={label}>
                       <p className="text-2xs text-[var(--text-tertiary)] mb-0.5">{label}</p>
@@ -439,6 +528,72 @@ export default function ScanPage() {
             </div>
           </div>
         )}
+        {/* ── Recent Scans Workspace ───────────────────────────────── */}
+        <div className="mt-12 pt-8 border-t border-[var(--border)] animate-fadeIn">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Recent Scans</h2>
+            {recentScans.length > 0 && (
+              <span className="text-xs font-medium text-[var(--text-tertiary)] bg-[var(--surface-raised)] px-2 py-1 rounded-md">
+                {recentScans.length} recent
+              </span>
+            )}
+          </div>
+
+          {loadingHistory ? (
+            <div className="flex items-center justify-center p-8">
+              <span className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : recentScans.length === 0 ? (
+            <div className="p-8 text-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] text-[var(--text-tertiary)] text-sm">
+              No recent scans. Your history will appear here.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentScans.map((scan) => (
+                <div key={scan.id} className="flex flex-col sm:flex-row gap-4 p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] transition-colors">
+                  <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg overflow-hidden flex items-center justify-center">
+                    {scan.thumbnail ? (
+                      <img src={scan.thumbnail} alt={scan.category} className="w-full h-full object-cover" />
+                    ) : (
+                      <CheckIcon size={20} className="text-[var(--text-tertiary)] opacity-30" />
+                    )}
+                  </div>
+                  <div className="flex-1 flex flex-col justify-center">
+                    <div className="flex items-start justify-between mb-1">
+                      <div>
+                        <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                          {CATEGORY_LABELS[scan.category] ?? scan.category}
+                        </h3>
+                        <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                          {new Date(scan.timestamp).toLocaleString(undefined, {
+                            month: "short", day: "numeric", hour: "numeric", minute: "numeric"
+                          })}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-bold text-[var(--accent-text)]">
+                          {scan.estimatedPricePerKg != null ? `₹${scan.estimatedPricePerKg}/kg` : "---"}
+                        </span>
+                        <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
+                          {scan.confidence}% sure
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <a
+                        href={`/sell?material=${scan.category}`}
+                        className="text-xs font-medium bg-[var(--accent)] text-white px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity"
+                      >
+                        Create Listing
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
     </ProtectedRoute>
   );

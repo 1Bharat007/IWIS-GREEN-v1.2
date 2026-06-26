@@ -1,17 +1,45 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
 import { getDB } from "../db";
+import { createNotification } from "./notification.controller";
 
 export const createListing = async (req: any, res: Response) => {
   try {
-    const { materialType, estimatedWeightKg, photoUrl, description, pickupAddress, lat, lng } = req.body;
+    const { materialType, wasteVolume, estimatedWeightKg, photoUrl, description, pickupAddress, lat, lng } = req.body;
 
-    if (!materialType || !estimatedWeightKg || !pickupAddress) {
-      return res.status(400).json({ message: "Material type, weight, and pickup address are required." });
+    if (!materialType || !pickupAddress || (!wasteVolume && !estimatedWeightKg)) {
+      return res.status(400).json({ message: "Material type, pickup address, and a quantity (volume or weight) are required." });
+    }
+
+    if (photoUrl && photoUrl.length > 700000) { // ~500KB base64
+      return res.status(400).json({ message: "Image is too large. Maximum allowed size is 500 KB." });
     }
 
     if (req.user.role !== "citizen") {
       return res.status(403).json({ message: "Only citizens can create waste listings." });
+    }
+
+    let finalLat = lat;
+    let finalLng = lng;
+    let finalStatus = 'listed';
+
+    if (!finalLat || !finalLng) {
+      try {
+        const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(pickupAddress)}`, {
+          headers: { 'User-Agent': 'IWIS-Beta/1.0' }
+        });
+        const geoData = await geoRes.json();
+        if (geoData && geoData.length > 0) {
+          finalLat = parseFloat(geoData[0].lat);
+          finalLng = parseFloat(geoData[0].lon);
+        }
+      } catch (err) {
+        console.error("Geocoding failed during creation", err);
+      }
+    }
+
+    if (!finalLat || !finalLng) {
+      finalStatus = 'location_pending';
     }
 
     const db = await getDB();
@@ -19,22 +47,29 @@ export const createListing = async (req: any, res: Response) => {
 
     await db.run(
       `INSERT INTO waste_listings (
-        id, citizenId, materialType, estimatedWeightKg, photoUrl, description, 
+        id, citizenId, materialType, wasteVolume, estimatedWeightKg, photoUrl, description, 
         pickupAddress, lat, lng, status, createdAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id, 
         req.user.id, 
-        materialType, 
-        estimatedWeightKg, 
+        materialType,
+        wasteVolume || null, 
+        estimatedWeightKg || 0, 
         photoUrl || null, 
         description || null, 
         pickupAddress, 
-        lat || null, 
-        lng || null, 
-        'listed', 
+        finalLat || null, 
+        finalLng || null, 
+        finalStatus, 
         new Date().toISOString()
       ]
+    );
+
+    await createNotification(
+      req.user.id,
+      "Listing Created",
+      `Your ${materialType} waste listing was successfully created.`
     );
 
     res.status(201).json({ message: "Listing created successfully.", id });
@@ -48,7 +83,14 @@ export const getMyListings = async (req: any, res: Response) => {
   try {
     const db = await getDB();
     const listings = await db.all(
-      "SELECT * FROM waste_listings WHERE citizenId = ? ORDER BY createdAt DESC",
+      `SELECT wl.*, 
+              u.displayName as recyclerName, u.phone as recyclerPhone,
+              rp.businessName as recyclerBusinessName, rp.rating as recyclerRating, rp.isApproved as recyclerVerified
+       FROM waste_listings wl
+       LEFT JOIN users u ON wl.recyclerId = u.id
+       LEFT JOIN recycler_profiles rp ON wl.recyclerId = rp.userId
+       WHERE wl.citizenId = ? 
+       ORDER BY wl.createdAt DESC`,
       req.user.id
     );
     res.json(listings);
@@ -84,7 +126,7 @@ export const getNearbyListings = async (req: any, res: Response) => {
       const R = 6371; // km
 
       const filtered = listings.filter((listing: any) => {
-        if (!listing.lat || !listing.lng) return true; // keep listings without strict coordinates for MVP demo
+        if (!listing.lat || !listing.lng) return false; // Fixed: Do not expose globally
         const dLat = toRad(listing.lat - userLat);
         const dLon = toRad(listing.lng - userLng);
         const a =
@@ -115,20 +157,27 @@ export const acceptListing = async (req: any, res: Response) => {
     const { id } = req.params;
     const db = await getDB();
 
-    // Ensure it's still open
-    const listing = await db.get("SELECT status FROM waste_listings WHERE id = ?", id);
-    if (!listing) {
-      return res.status(404).json({ message: "Listing not found." });
-    }
-    if (listing.status !== 'listed') {
-      return res.status(400).json({ message: "Listing is no longer available." });
-    }
-
-    // Update status to accepted and set recyclerId
-    await db.run(
-      "UPDATE waste_listings SET status = 'accepted', recyclerId = ?, updatedAt = ? WHERE id = ?",
+    // Atomic conditional update to prevent race conditions
+    const result = await db.run(
+      "UPDATE waste_listings SET status = 'accepted', recyclerId = ?, updatedAt = ? WHERE id = ? AND status = 'listed'",
       [req.user.id, new Date().toISOString(), id]
     );
+
+    if (result.changes === 0) {
+      return res.status(409).json({ message: "This listing has already been accepted by another recycler." });
+    }
+
+    // Notify citizen (Fetch citizen id via listing query since we skipped the pre-select)
+    const updatedListing = await db.get("SELECT citizenId FROM waste_listings WHERE id = ?", id);
+    if (updatedListing) {
+      const recyclerProfile = await db.get("SELECT businessName FROM recycler_profiles WHERE userId = ?", req.user.id);
+      const recyclerName = recyclerProfile?.businessName || req.user.displayName || "A recycler";
+      await createNotification(
+        updatedListing.citizenId,
+        "Listing Accepted",
+        `${recyclerName} has accepted your waste listing and will schedule a pickup soon.`
+      );
+    }
 
     res.json({ message: "Listing accepted successfully." });
   } catch (err) {
@@ -171,6 +220,13 @@ export const schedulePickup = async (req: any, res: Response) => {
     await db.run(
       "UPDATE waste_listings SET status = 'scheduled', scheduledDate = ?, scheduledTimeSlot = ?, updatedAt = ? WHERE id = ?",
       [scheduledDate, scheduledTimeSlot, new Date().toISOString(), id]
+    );
+
+    // Notify citizen
+    await createNotification(
+      listing.citizenId,
+      "Pickup Scheduled",
+      `Your pickup is scheduled for ${new Date(scheduledDate).toLocaleDateString()} between ${scheduledTimeSlot}.`
     );
 
     res.json({ message: "Pickup scheduled." });
@@ -226,6 +282,18 @@ export const confirmPickup = async (req: any, res: Response) => {
     await db.run(
       "UPDATE users SET totalEarnings = COALESCE(totalEarnings, 0) + ? WHERE id = ?",
       [citizenEarnings, listing.citizenId]
+    );
+
+    // Notify citizen
+    await createNotification(
+      listing.citizenId,
+      "Pickup Completed",
+      `Your waste was picked up successfully. You earned ₹${citizenEarnings.toFixed(2)}.`
+    );
+    await createNotification(
+      listing.citizenId,
+      "Payment Recorded",
+      `A cash payment of ₹${citizenEarnings.toFixed(2)} was recorded for your listing.`
     );
 
     res.json({ message: "Pickup confirmed and transaction generated." });

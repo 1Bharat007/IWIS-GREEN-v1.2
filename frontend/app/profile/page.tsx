@@ -1,226 +1,190 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
-import { getToken } from "@/lib/session";
-import ProtectedRoute from "@/components/layout/ProtectedRoute";
-import { CheckIcon, ScanIcon, LeafIcon, TrophyIcon, TrendUpIcon, ArrowRightIcon } from "@/components/ui/Icons";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import ProtectedRoute from "@/components/layout/ProtectedRoute";
+import { apiFetch } from "@/lib/api";
+import {
+  UserIcon,
+  BarChartIcon,
+  CheckCircleIcon,
+  SettingsIcon,
+  LogOutIcon,
+  InfoIcon,
+  LeafIcon
+} from "@/components/ui/Icons";
+import { clearToken } from "@/lib/session";
 
-type Scan = {
-  id: string;
-  category: string;
-  confidence: number;
-  co2: number;
-  timestamp: string;
-};
-
-type ProfileData = {
-  history: Scan[];
-  totalScans: number;
-  totalCO2: number;
-  streak: number;
-  tier: string;
-  greenPoints: number;
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  Plastic: "bg-[var(--info-bg)] text-[var(--info)]",
-  Paper:   "bg-[var(--warning-bg)] text-[var(--warning)]",
-  Metal:   "bg-[var(--surface-raised)] text-[var(--text-secondary)]",
-  Glass:   "bg-cyan-50 text-cyan-700 dark:bg-cyan-900/20 dark:text-cyan-300",
-  Organic: "bg-[var(--accent-subtle)] text-[var(--accent-text)]",
-  Other:   "bg-[var(--surface-raised)] text-[var(--text-secondary)]",
-};
-
-export default function Profile() {
-  const [data, setData] = useState<ProfileData | null>(null);
+export default function ProfilePage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
-      if (!getToken()) return;
-      try {
-        const res = await apiFetch("/waste/history");
-        setData(res);
-      } catch (err) {
-        console.error(err);
-      } finally {
+    apiFetch("/auth/me")
+      .then((data) => {
+        setProfile(data);
+      })
+      .catch(() => {
+        // Handle error quietly
+      })
+      .finally(() => {
         setLoading(false);
-      }
-    };
-    load();
+      });
   }, []);
+
+  const handleLogout = () => {
+    clearToken();
+    router.push("/login");
+  };
 
   if (loading) {
     return (
       <ProtectedRoute>
-        <div className="flex items-center gap-2.5 py-12 justify-center text-sm text-[var(--text-tertiary)]">
-          <span className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-          Loading profile…
+        <div className="flex justify-center items-center h-64">
+          <span className="w-8 h-8 border-4 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
         </div>
       </ProtectedRoute>
     );
   }
 
-  if (!data) return null;
+  if (!profile) {
+    return (
+      <ProtectedRoute>
+        <div className="text-center py-20 text-[var(--text-secondary)]">Failed to load profile.</div>
+      </ProtectedRoute>
+    );
+  }
 
-  const badges = [
-    { earned: data.totalScans >= 1,  title: "First Scan", desc: "Started the green journey" },
-    { earned: data.totalScans >= 10, title: "10 Scans",   desc: "Recycling regular" },
-    { earned: data.totalScans >= 25, title: "25 Scans",   desc: "Earth champion" },
-    { earned: data.streak >= 5,      title: "5 Day Streak", desc: "Consistency is key" },
-    { earned: data.totalCO2 >= 10,   title: "10kg CO₂ Saved", desc: "Carbon reducer" },
-  ];
-
-  const fmtDate = (ts: string) =>
-    new Date(ts).toLocaleDateString("en-IN", {
-      day: "numeric", month: "short", year: "numeric"
-    });
+  const isRecycler = profile.role === "recycler";
+  const memberSince = new Date(profile.createdAt || Date.now()).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
 
   return (
     <ProtectedRoute>
-      <div className="max-w-5xl mx-auto space-y-6 py-2 animate-fadeIn">
-        {/* Header */}
-        <div className="border-b border-[var(--border)] pb-5">
-          <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
-            Impact Dashboard
-          </p>
-          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Your Profile</h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">
-            Track your environmental contributions, badges, and Green Points.
-          </p>
-        </div>
-
-        {/* Eco Wallet Banner */}
-        <div className="relative overflow-hidden rounded-xl border border-[var(--accent-border)] bg-[var(--accent-subtle)] p-6">
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-[var(--accent)]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="max-w-2xl mx-auto space-y-8 animate-fadeIn pb-20">
+        
+        {/* ── IDENTITY SECTION ── */}
+        <section className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-[var(--accent)] to-blue-500 opacity-20" />
           
-          <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div>
-              <p className="text-xs font-semibold text-[var(--accent-text)] uppercase tracking-wider mb-2">
-                Green Points Wallet
-              </p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-semibold text-[var(--text-primary)]">
-                  {(data.greenPoints || 0).toLocaleString()}
-                </span>
-                <span className="text-sm font-medium text-[var(--text-secondary)]">GP</span>
-              </div>
-              <p className="text-sm text-[var(--text-secondary)] mt-2 max-w-sm leading-relaxed">
-                Earn 10 points for every verified waste scan. Use points to redeem rewards from sustainability partners.
-              </p>
-            </div>
-            
-            <div className="shrink-0 bg-[var(--surface)] border border-[var(--border)] rounded-lg p-3 text-center w-full md:w-auto">
-              <p className="text-xs font-medium text-[var(--text-secondary)] mb-2">Reward Partners</p>
-              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-2xs font-medium bg-[var(--surface-raised)] text-[var(--text-tertiary)] border border-[var(--border)]">
-                Coming Soon in Q3
+          <div className="relative flex flex-col sm:flex-row items-center gap-6 mt-8">
+            <div className="w-24 h-24 rounded-full bg-[var(--surface-raised)] border-4 border-[var(--surface)] shadow-md flex items-center justify-center shrink-0">
+              <span className="text-3xl font-bold text-[var(--text-tertiary)] uppercase">
+                {profile.displayName?.charAt(0) || "U"}
               </span>
             </div>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { title: "Total Scans", value: data.totalScans, icon: ScanIcon, accent: false },
-            { title: "CO₂ Impact",  value: `${Number(data.totalCO2).toFixed(2)} kg`, icon: LeafIcon, accent: true },
-            { title: "Daily Streak", value: `${data.streak} days`, icon: TrendUpIcon, accent: false },
-            { title: "Eco Tier",    value: data.tier, icon: TrophyIcon, accent: false },
-          ].map((stat, i) => (
-            <div key={i} className="p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-medium text-[var(--text-secondary)]">{stat.title}</p>
-                <div className={`w-6 h-6 rounded-md flex items-center justify-center ${
-                  stat.accent 
-                    ? "bg-[var(--accent-subtle)] text-[var(--accent-text)]" 
-                    : "bg-[var(--surface-raised)] text-[var(--text-tertiary)]"
-                }`}>
-                  <stat.icon size={12} />
-                </div>
+            
+            <div className="text-center sm:text-left flex-1">
+              <h1 className="text-2xl font-bold text-[var(--text-primary)] flex items-center justify-center sm:justify-start gap-2">
+                {profile.displayName || "IWIS User"}
+                {(profile.isApproved || !isRecycler) && (
+                  <CheckCircleIcon size={20} className="text-[var(--accent)]" />
+                )}
+              </h1>
+              <p className="text-[var(--text-secondary)] text-sm mb-3">
+                {profile.email} • {profile.phone || "+91 XXXXXXXXXX"}
+              </p>
+              
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--surface-raised)] text-[var(--text-secondary)]">
+                  Member since {memberSince}
+                </span>
+                <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-[var(--accent-subtle)] text-[var(--accent-text)]">
+                  {isRecycler ? "Collector" : "Seller"} Account
+                </span>
+                {isRecycler && profile.recyclerRating && (
+                  <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    ★ {profile.recyclerRating.toFixed(1)} Rating
+                  </span>
+                )}
               </div>
-              <p className={`text-xl font-semibold ${stat.accent ? "text-[var(--accent-text)]" : "text-[var(--text-primary)]"}`}>
-                {stat.value}
+            </div>
+          </div>
+        </section>
+
+        {/* ── IMPACT SECTION ── */}
+        <section>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 px-2">Your Impact</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 shadow-sm flex flex-col">
+              <span className="text-[var(--text-tertiary)] mb-2"><CheckCircleIcon size={20} /></span>
+              <p className="text-2xl font-bold text-[var(--text-primary)] mb-1">
+                {isRecycler ? profile.completedPickups : profile.successfulListings}
+              </p>
+              <p className="text-xs text-[var(--text-secondary)] font-medium">
+                {isRecycler ? "Completed Pickups" : "Successful Listings"}
               </p>
             </div>
-          ))}
-        </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Achievements */}
-          <div className="md:col-span-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Badges & Achievements</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {badges.map((badge, index) => (
-                <div 
-                  key={index}
-                  className={`p-3 rounded-lg border transition-colors ${
-                    badge.earned 
-                      ? "border-[var(--accent-border)] bg-[var(--surface)]" 
-                      : "border-[var(--border)] bg-[var(--surface-raised)] opacity-60"
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-md mb-2 flex items-center justify-center ${
-                    badge.earned 
-                      ? "bg-[var(--accent-subtle)] text-[var(--accent-text)]" 
-                      : "bg-[var(--border)] text-[var(--text-tertiary)]"
-                  }`}>
-                    <TrophyIcon size={14} />
-                  </div>
-                  <h3 className="text-xs font-semibold text-[var(--text-primary)] mb-0.5">{badge.title}</h3>
-                  <p className="text-2xs text-[var(--text-tertiary)] leading-tight">{badge.desc}</p>
-                </div>
-              ))}
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 shadow-sm flex flex-col">
+              <span className="text-[var(--accent)] mb-2"><BarChartIcon size={20} /></span>
+              <p className="text-2xl font-bold text-[var(--text-primary)] mb-1">
+                ₹{profile.totalEarnings?.toLocaleString() || "0"}
+              </p>
+              <p className="text-xs text-[var(--text-secondary)] font-medium">Total Earnings</p>
             </div>
-          </div>
 
-          {/* Recent Scans Mini-List */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 flex flex-col">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Recent Scans</h2>
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 shadow-sm flex flex-col">
+              <span className="text-blue-500 mb-2"><LeafIcon size={20} /></span>
+              <p className="text-2xl font-bold text-[var(--text-primary)] mb-1">
+                {profile.totalWasteRecycledKg?.toFixed(1) || "0"} <span className="text-base text-[var(--text-secondary)] font-normal">kg</span>
+              </p>
+              <p className="text-xs text-[var(--text-secondary)] font-medium">Waste Recycled</p>
+            </div>
+
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 shadow-sm flex flex-col">
+              <span className="text-emerald-500 mb-2">☁️</span>
+              <p className="text-2xl font-bold text-[var(--text-primary)] mb-1">
+                {profile.totalCO2?.toFixed(1) || "0"} <span className="text-base text-[var(--text-secondary)] font-normal">kg</span>
+              </p>
+              <p className="text-xs text-[var(--text-secondary)] font-medium">CO₂ Saved</p>
+            </div>
+
+          </div>
+        </section>
+
+        {/* ── QUICK ACTIONS ── */}
+        <section>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-4 px-2">Quick Actions</h2>
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-sm overflow-hidden">
             
-            {data.history.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-                <p className="text-sm text-[var(--text-secondary)]">No scans yet.</p>
-                <Link href="/scan" className="text-xs text-[var(--accent-text)] mt-2 hover:underline">
-                  Start scanning →
-                </Link>
+            <Link href="/settings" className="flex items-center gap-4 p-4 hover:bg-[var(--surface-raised)] transition-colors border-b border-[var(--border)] group">
+              <div className="w-10 h-10 rounded-full bg-[var(--surface-raised)] group-hover:bg-[var(--border)] flex items-center justify-center text-[var(--text-secondary)] transition-colors">
+                <SettingsIcon size={18} />
               </div>
-            ) : (
-              <div className="space-y-3 flex-1 overflow-y-auto">
-                {data.history.slice(0, 4).map((scan) => (
-                  <div key={scan.id} className="flex items-center justify-between p-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)]">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-2 h-2 rounded-full ${
-                        scan.category === "Plastic" ? "bg-[var(--info)]"
-                        : scan.category === "Paper" ? "bg-[var(--warning)]"
-                        : scan.category === "Organic" ? "bg-[var(--accent)]"
-                        : "bg-[var(--text-tertiary)]"
-                      }`} />
-                      <div>
-                        <p className="text-xs font-medium text-[var(--text-primary)]">{scan.category}</p>
-                        <p className="text-2xs text-[var(--text-tertiary)]">{fmtDate(scan.timestamp)}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-semibold text-[var(--accent-text)]">+{scan.co2}kg</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-[var(--text-primary)]">Account Settings</h3>
+                <p className="text-xs text-[var(--text-secondary)]">Theme, Password, Privacy</p>
               </div>
-            )}
+            </Link>
 
-            {data.history.length > 4 && (
-              <Link 
-                href="/history" 
-                className="mt-4 pt-3 border-t border-[var(--border)] text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] flex items-center justify-center gap-1.5 transition-colors"
-              >
-                View full history
-                <ArrowRightIcon size={11} />
-              </Link>
-            )}
+            <button className="w-full flex items-center gap-4 p-4 hover:bg-[var(--surface-raised)] transition-colors border-b border-[var(--border)] group text-left">
+              <div className="w-10 h-10 rounded-full bg-[var(--surface-raised)] group-hover:bg-[var(--border)] flex items-center justify-center text-[var(--text-secondary)] transition-colors">
+                <InfoIcon size={18} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-[var(--text-primary)]">Help & Support</h3>
+                <p className="text-xs text-[var(--text-secondary)]">Contact operations team</p>
+              </div>
+            </button>
+
+            <button 
+              onClick={handleLogout}
+              className="w-full flex items-center gap-4 p-4 hover:bg-[var(--destructive-bg)] transition-colors group text-left"
+            >
+              <div className="w-10 h-10 rounded-full bg-[var(--surface-raised)] group-hover:bg-[var(--destructive-border)] flex items-center justify-center text-[var(--destructive)] transition-colors">
+                <LogOutIcon size={18} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-[var(--destructive)]">Log Out</h3>
+              </div>
+            </button>
+
           </div>
-        </div>
+        </section>
+
       </div>
     </ProtectedRoute>
   );

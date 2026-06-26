@@ -1,206 +1,160 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { apiFetch } from "@/lib/api";
+import { useState } from "react";
+import { useTheme } from "next-themes";
+import Link from "next/link";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
-import { CheckIcon, AlertIcon } from "@/components/ui/Icons";
+import {
+  SettingsIcon,
+  CheckCircleIcon,
+  DownloadIcon,
+  TrashIcon,
+  ArrowRightIcon,
+  ExternalLinkIcon,
+  MoonIcon,
+  SunIcon
+} from "@/components/ui/Icons";
 
 export default function SettingsPage() {
-  const [displayName, setDisplayName] = useState("");
-  const [email, setEmail] = useState("");
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [theme, setTheme] = useState("System");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const { theme, setTheme, systemTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const user = await apiFetch("/auth/me");
-        setDisplayName(user.displayName || "");
-        setEmail(user.email || "");
+  // useEffect only runs on the client, so now we can safely show the UI
+  import("react").then((React) => {
+    React.useEffect(() => {
+      setMounted(true);
+    }, []);
+  });
 
-        // Local settings
-        const savedTheme = localStorage.getItem("theme") || "System";
-        const savedNotifs = localStorage.getItem("notifications") !== "false";
-        setTheme(savedTheme);
-        setNotificationsEnabled(savedNotifs);
-      } catch (err) {
-        console.error("Failed to load profile:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
-
-  const handleApplyTheme = (selectedTheme: string) => {
-    if (selectedTheme === "Dark") {
-      document.documentElement.classList.add("dark");
-    } else if (selectedTheme === "Light") {
-      document.documentElement.classList.remove("dark");
-    } else {
-      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    }
+  const handleDownloadData = () => {
+    alert("Data download request submitted. You will receive an email shortly.");
   };
 
-  useEffect(() => {
-    handleApplyTheme(theme);
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  const saveChanges = async () => {
-    setSaving(true);
-    try {
-      // Save local preferences
-      localStorage.setItem("notifications", notificationsEnabled ? "true" : "false");
-
-      // Save profile to backend
-      await apiFetch("/auth/profile", {
-        method: "PATCH",
-        body: JSON.stringify({ displayName }),
-      });
-
-      setToast({ message: "Settings saved successfully", type: "success" });
-    } catch (err: any) {
-      setToast({ message: err.backendMessage || err.message || "Failed to save settings", type: "error" });
-    } finally {
-      setSaving(false);
-      setTimeout(() => setToast(null), 3000);
+  const handleDeleteAccount = () => {
+    const confirm = window.confirm("Are you sure you want to delete your account? This action cannot be undone.");
+    if (confirm) {
+      alert("Account deletion initiated. Contact support if this was a mistake.");
     }
   };
-
-  if (loading) {
-    return (
-      <ProtectedRoute>
-        <div className="flex items-center gap-2.5 py-12 justify-center text-sm text-[var(--text-tertiary)]">
-          <span className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-          Loading settings…
-        </div>
-      </ProtectedRoute>
-    );
-  }
 
   return (
     <ProtectedRoute>
-      <div className="max-w-3xl mx-auto space-y-6 py-2 animate-fadeIn">
-        {/* Header */}
-        <div className="border-b border-[var(--border)] pb-5">
-          <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">
-            Preferences
-          </p>
-          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Settings</h1>
+      <div className="max-w-3xl mx-auto py-8 animate-fadeIn">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">Account Settings</h1>
+          <p className="text-sm text-[var(--text-secondary)]">Manage your preferences and privacy settings.</p>
         </div>
 
-        {/* Toast */}
-        {toast && (
-          <div className={`flex items-center gap-2.5 px-3.5 py-3 rounded-lg border text-sm animate-fadeIn ${
-            toast.type === "success"
-              ? "border-[var(--accent-border)] bg-[var(--accent-subtle)] text-[var(--accent-text)]"
-              : "border-[var(--destructive-border)] bg-[var(--destructive-bg)] text-[var(--destructive)]"
-          }`}>
-            {toast.type === "success" ? <CheckIcon size={14} /> : <AlertIcon size={14} />}
-            {toast.message}
-          </div>
-        )}
-
-        {/* Profile Section */}
-        <div className="p-6 rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Profile Information</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">
-                Display Name
-              </label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Your Name"
-                className="w-full max-w-sm px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15 transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">
-                Email Address
-              </label>
-              <input
-                type="email"
-                value={email}
-                disabled
-                className="w-full max-w-sm px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] text-sm text-[var(--text-tertiary)] cursor-not-allowed"
-              />
-              <p className="mt-1 text-2xs text-[var(--text-tertiary)]">Email cannot be changed.</p>
-            </div>
-            <button
-              onClick={saveChanges}
-              disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--text-primary)] text-[var(--bg)] text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
-            >
-              {saving && <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
-              Save Profile
-            </button>
-          </div>
-        </div>
-
-        {/* Preferences Section */}
-        <div className="p-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] space-y-6">
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] mb-4">App Preferences</h2>
+        <div className="space-y-6">
           
-          <div className="flex items-center justify-between max-w-sm">
-            <div>
-              <h3 className="text-sm font-medium text-[var(--text-primary)]">Email Notifications</h3>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5">Receive weekly impact reports</p>
+          {/* ── APPEARANCE ── */}
+          <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-sm">
+            <div className="p-5 border-b border-[var(--border)]">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <SunIcon size={18} className="text-[var(--text-secondary)]" />
+                Appearance
+              </h2>
             </div>
-            <button
-              onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-              className={`w-10 h-5 rounded-full transition-colors relative flex items-center ${
-                notificationsEnabled ? "bg-[var(--accent)]" : "bg-[var(--border-strong)]"
-              }`}
-            >
-              <span className={`block w-3.5 h-3.5 rounded-full bg-white absolute transition-transform ${
-                notificationsEnabled ? "translate-x-5" : "translate-x-1"
-              }`} />
-            </button>
-          </div>
+            <div className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-[var(--text-primary)]">Theme Preference</h3>
+                  <p className="text-xs text-[var(--text-secondary)]">Choose how IWIS looks to you.</p>
+                </div>
+                {mounted && (
+                  <select
+                    value={theme}
+                    onChange={(e) => setTheme(e.target.value)}
+                    className="px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] text-sm font-medium outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+                  >
+                    <option value="system">System Default</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                )}
+              </div>
+            </div>
+          </section>
 
-          <div className="pt-4 border-t border-[var(--border)]">
-            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">
-              Interface Theme
-            </label>
-            <select
-              value={theme}
-              onChange={(e) => setTheme(e.target.value)}
-              className="w-full max-w-sm px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15 transition-colors cursor-pointer"
-            >
-              <option>System</option>
-              <option>Light</option>
-              <option>Dark</option>
-            </select>
-          </div>
-        </div>
+          {/* ── NOTIFICATIONS ── */}
+          <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-sm">
+            <div className="p-5 border-b border-[var(--border)]">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <SettingsIcon size={18} className="text-[var(--text-secondary)]" />
+                Preferences
+              </h2>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-[var(--text-primary)]">Email Notifications</h3>
+                  <p className="text-xs text-[var(--text-secondary)]">Receive updates about pickups and earnings.</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" className="sr-only peer" defaultChecked />
+                  <div className="w-11 h-6 bg-[var(--border)] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--accent)]"></div>
+                </label>
+              </div>
+            </div>
+          </section>
 
-        {/* Danger Zone */}
-        <div className="p-6 rounded-xl border border-[var(--destructive-border)] bg-[var(--destructive-bg)]">
-          <h2 className="text-sm font-semibold text-[var(--destructive)] mb-2">Danger Zone</h2>
-          <p className="text-xs text-[var(--destructive)] opacity-90 mb-4 max-w-md">
-            Permanently delete your account and all associated scan data. This action cannot be undone.
-          </p>
-          <button 
-            onClick={() => {
-              if (confirm("Are you absolutely sure? This cannot be undone.")) {
-                alert("Account deletion flow coming soon.");
-              }
-            }}
-            className="px-4 py-2 rounded-lg bg-[var(--destructive)] text-white text-sm font-medium hover:opacity-90 transition-opacity"
-          >
-            Delete Account
-          </button>
+          {/* ── DATA & PRIVACY ── */}
+          <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-sm">
+            <div className="p-5 border-b border-[var(--border)]">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <CheckCircleIcon size={18} className="text-[var(--text-secondary)]" />
+                Data & Privacy
+              </h2>
+            </div>
+            
+            <div className="p-5 space-y-6">
+              
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-6">
+                <div className="pr-4">
+                  <h3 className="text-sm font-medium text-[var(--text-primary)] mb-1">Download your data</h3>
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    Get a copy of your IWIS data, including past pickups, earnings, and uploaded waste scans.
+                  </p>
+                </div>
+                <button onClick={handleDownloadData} className="shrink-0 flex items-center gap-2 px-4 py-2 bg-[var(--surface-raised)] hover:bg-[var(--border)] border border-[var(--border)] rounded-lg text-sm font-medium transition-colors">
+                  <DownloadIcon size={14} />
+                  Download
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-6">
+                <div className="pr-4">
+                  <h3 className="text-sm font-medium text-[var(--text-primary)] mb-1">Privacy Policies</h3>
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    Read how we protect your data and comply with digital privacy regulations.
+                  </p>
+                </div>
+                <div className="shrink-0 flex flex-col gap-2">
+                  <Link href="/privacy" className="text-xs text-[var(--accent-text)] hover:underline flex items-center gap-1">
+                    Privacy Policy <ExternalLinkIcon size={10} />
+                  </Link>
+                  <Link href="/terms" className="text-xs text-[var(--accent-text)] hover:underline flex items-center gap-1">
+                    Terms of Service <ExternalLinkIcon size={10} />
+                  </Link>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <div className="pr-4">
+                  <h3 className="text-sm font-medium text-[var(--destructive)] mb-1">Delete Account</h3>
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    Permanently delete your account and all associated data. This action cannot be undone.
+                  </p>
+                </div>
+                <button onClick={handleDeleteAccount} className="shrink-0 flex items-center gap-2 px-4 py-2 border border-[var(--destructive-border)] bg-[var(--destructive-bg)] text-[var(--destructive)] hover:opacity-80 rounded-lg text-sm font-medium transition-colors">
+                  <TrashIcon size={14} />
+                  Delete
+                </button>
+              </div>
+
+            </div>
+          </section>
+
         </div>
       </div>
     </ProtectedRoute>

@@ -96,10 +96,12 @@ Rules:
     throw new Error("Failed to parse JSON response from AI");
   }
 
-  const category: string = parsed?.primary?.category || "Other";
+  const category: string = parsed?.primary?.category || parsed?.category || "Other";
   const confidence: number =
     typeof parsed?.primary?.confidence === "number"
       ? parsed.primary.confidence
+      : typeof parsed?.confidence === "number"
+      ? parsed.confidence
       : 0;
   const co2: number =
     typeof parsed?.co2 === "number"

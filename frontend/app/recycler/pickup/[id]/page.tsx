@@ -6,7 +6,7 @@ import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import { apiFetch } from "@/lib/api";
 import { ArrowRightIcon, AlertIcon } from "@/components/ui/Icons";
 
-export default function SchedulePickupPage() {
+export default function ScheduleCollectionPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -37,7 +37,7 @@ export default function SchedulePickupPage() {
       // Redirect to confirm page for demo purposes
       router.push(`/recycler/pickup/${id}/confirm`);
     } catch (err: any) {
-      setError(err.backendMessage || err.message || "Failed to schedule pickup.");
+      setError(err.backendMessage || err.message || "Failed to schedule collection.");
     } finally {
       setLoading(false);
     }
@@ -48,7 +48,7 @@ export default function SchedulePickupPage() {
       <ProtectedRoute>
         <div className="flex items-center justify-center h-[60vh] text-[var(--text-tertiary)]">
           <span className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin mr-2" />
-          Loading pickup details...
+          Loading collection details...
         </div>
       </ProtectedRoute>
     );
@@ -72,7 +72,7 @@ export default function SchedulePickupPage() {
             Step 1 of 2
           </p>
           <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-2">
-            Schedule Pickup
+            Schedule Collection
           </h1>
           <p className="text-sm text-[var(--text-secondary)]">
             Let the citizen know when you will arrive to collect the {listing.materialType}.
@@ -87,7 +87,7 @@ export default function SchedulePickupPage() {
         )}
 
         <div className="bg-[var(--surface-raised)] border border-[var(--border)] p-5 rounded-2xl mb-6">
-          <h3 className="font-semibold text-[var(--text-primary)] mb-2">Pickup Location</h3>
+          <h3 className="font-semibold text-[var(--text-primary)] mb-2">Collection Location</h3>
           <p className="text-sm text-[var(--text-secondary)] mb-4">{listing.pickupAddress}</p>
           <div className="flex gap-4 border-t border-[var(--border)] pt-4 mt-2">
             <div>
@@ -138,8 +138,17 @@ export default function SchedulePickupPage() {
             disabled={loading || !date}
             className="w-full flex items-center justify-center gap-2 py-4 px-4 rounded-xl bg-[var(--accent)] text-white text-sm font-medium hover:bg-[var(--accent-hover)] disabled:opacity-50 transition-all shadow-sm"
           >
-            {loading ? "Saving..." : "Confirm Schedule"}
-            <ArrowRightIcon size={14} />
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Scheduling...
+              </span>
+            ) : (
+              <>
+                Confirm Schedule
+                <ArrowRightIcon size={14} />
+              </>
+            )}
           </button>
         </form>
       </div>

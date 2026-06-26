@@ -4,17 +4,21 @@ import path from "path";
 import crypto from "crypto";
 
 let dbInstance: any;
+let dbInitPromise: Promise<any> | null = null;
 
-// Use /tmp on production servers (Render, Railway, etc.), local path in dev
-const DB_PATH = process.env.NODE_ENV === "production"
-  ? "/tmp/iwis.db"
-  : path.resolve("./iwis.db");
+// Use a persistent relative path or a volume mount provided by the environment
+const DB_PATH = process.env.DB_PATH || path.resolve("./iwis.db");
 
-export const initDB = async () => {
+const executeInitDB = async () => {
   dbInstance = await open({
     filename: DB_PATH,
     driver: sqlite3.Database,
   });
+
+  // Enable Write-Ahead Logging for concurrency
+  await dbInstance.run("PRAGMA journal_mode = WAL;");
+  await dbInstance.run("PRAGMA synchronous = NORMAL;");
+  await dbInstance.run("PRAGMA foreign_keys = ON;");
 
   // ─── EXISTING TABLES (preserved) ─────────────────────────────────────────
   await dbInstance.exec(`
@@ -39,6 +43,7 @@ export const initDB = async () => {
       co2 REAL,
       timestamp TEXT,
       imageHash TEXT,
+      thumbnail TEXT,
       FOREIGN KEY(userId) REFERENCES users(id)
     );
 
@@ -81,6 +86,18 @@ export const initDB = async () => {
     );
   `);
 
+  // OTP Codes table
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS otp_codes (
+      phone TEXT PRIMARY KEY,
+      otp TEXT NOT NULL,
+      expiresAt TEXT NOT NULL
+    );
+  `);
+  
+  try { await dbInstance.run("ALTER TABLE otp_codes ADD COLUMN lastRequestedAt TEXT"); } catch (e) {}
+  try { await dbInstance.run("ALTER TABLE otp_codes ADD COLUMN hourlyCount INTEGER DEFAULT 0"); } catch (e) {}
+
   // ─── NEW MVP TABLES ──────────────────────────────────────────────────────
 
   // New user columns for MVP
@@ -93,6 +110,7 @@ export const initDB = async () => {
   try { await dbInstance.run("ALTER TABLE users ADD COLUMN lng REAL"); } catch (e) {}
   try { await dbInstance.run("ALTER TABLE users ADD COLUMN upiId TEXT"); } catch (e) {}
   try { await dbInstance.run("ALTER TABLE users ADD COLUMN totalEarnings REAL DEFAULT 0"); } catch (e) {}
+  try { await dbInstance.run("ALTER TABLE users ADD COLUMN preferredLanguage TEXT DEFAULT 'English'"); } catch (e) {}
 
   // Standalone waste listings (Sell Your Waste — not tied to scan batches)
   await dbInstance.exec(`
@@ -122,6 +140,12 @@ export const initDB = async () => {
       FOREIGN KEY(recyclerId) REFERENCES users(id)
     );
   `);
+  
+  // Idempotently add wasteVolume column if it doesn't exist
+  try { await dbInstance.run("ALTER TABLE waste_listings ADD COLUMN wasteVolume TEXT"); } catch (e) {}
+  
+  // Idempotently add thumbnail column to batches
+  try { await dbInstance.run("ALTER TABLE batches ADD COLUMN thumbnail TEXT"); } catch (e) {}
 
   // Transactions for completed pickups
   await dbInstance.exec(`
@@ -153,6 +177,8 @@ export const initDB = async () => {
   try { await dbInstance.run("ALTER TABLE transactions ADD COLUMN pricePerKg REAL"); } catch (e) {}
   try { await dbInstance.run("ALTER TABLE transactions ADD COLUMN citizenEarnings REAL"); } catch (e) {}
   try { await dbInstance.run("ALTER TABLE transactions ADD COLUMN status TEXT DEFAULT 'completed'"); } catch (e) {}
+  try { await dbInstance.run("ALTER TABLE transactions ADD COLUMN feedbackRating REAL"); } catch (e) {}
+  try { await dbInstance.run("ALTER TABLE transactions ADD COLUMN feedbackComment TEXT"); } catch (e) {}
 
   // Recycler profiles
   await dbInstance.exec(`
@@ -225,6 +251,38 @@ export const initDB = async () => {
     );
   `);
 
+  // Notifications
+  await dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id TEXT PRIMARY KEY,
+      userId TEXT NOT NULL,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      type TEXT DEFAULT 'info',
+      isRead INTEGER DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      FOREIGN KEY(userId) REFERENCES users(id)
+    );
+  `);
+
+  // ─── PERFORMANCE INDEXES ───────────────────────────────────────────────────
+  await dbInstance.exec(`
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+    
+    CREATE INDEX IF NOT EXISTS idx_transactions_citizen ON transactions(citizenId);
+    CREATE INDEX IF NOT EXISTS idx_transactions_recycler ON transactions(recyclerId);
+    CREATE INDEX IF NOT EXISTS idx_transactions_status ON transactions(status);
+    
+    CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(userId);
+    
+    CREATE INDEX IF NOT EXISTS idx_waste_listings_citizen ON waste_listings(citizenId);
+    CREATE INDEX IF NOT EXISTS idx_waste_listings_recycler ON waste_listings(recyclerId);
+    CREATE INDEX IF NOT EXISTS idx_waste_listings_status ON waste_listings(status);
+
+    CREATE INDEX IF NOT EXISTS idx_recycler_profiles_user ON recycler_profiles(userId);
+  `);
+
   // ─── SEED JAMMU PRICES (Development Only) ──────────────────────────────────
   const pricesCount = await dbInstance.get("SELECT COUNT(*) as count FROM scrap_prices");
   if (pricesCount.count === 0) {
@@ -250,7 +308,15 @@ export const initDB = async () => {
     }
     console.log("Seeded default scrap prices for Jammu.");
   }
+  return dbInstance;
+};
 
+export const initDB = async () => {
+  if (dbInstance) return dbInstance;
+  if (!dbInitPromise) {
+    dbInitPromise = executeInitDB();
+  }
+  await dbInitPromise;
   return dbInstance;
 };
 

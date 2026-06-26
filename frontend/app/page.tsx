@@ -1,46 +1,43 @@
 import Link from "next/link";
 import {
-  ScanIcon, LeafIcon, ShoppingIcon, MapPinIcon, TrophyIcon, BotIcon,
-  ArrowRightIcon, BarChartIcon, CheckIcon,
+  ScanIcon, ShoppingIcon, BotIcon,
+  ArrowRightIcon, CheckIcon, IndianRupeeIcon, BarChartIcon
 } from "@/components/ui/Icons";
 
 const FEATURES = [
   {
     Icon: ScanIcon,
-    title: "Computer Vision AI",
-    desc: "Multi-class waste classification — plastic, organic, metal, glass — with confidence scoring via Gemini Vision.",
-  },
-  {
-    Icon: LeafIcon,
-    title: "Scope 3 Accounting",
-    desc: "Calculate avoided CO₂ per batch. Aligned with India's NDC commitments and BRSR reporting standards.",
+    title: "AI Waste Scanner",
+    desc: "Take a photo of your waste. Our AI instantly identifies the material and its estimated market value.",
   },
   {
     Icon: ShoppingIcon,
-    title: "Circular Marketplace",
-    desc: "Connects citizens to Material Recovery Facilities via a transparent bid-based reverse supply chain.",
-  },
-  {
-    Icon: MapPinIcon,
-    title: "Geospatial Heatmaps",
-    desc: "City-level tracking of illegal dumping hotspots to optimize municipal dispatch routes and interventions.",
-  },
-  {
-    Icon: TrophyIcon,
-    title: "Gamified Incentives",
-    desc: "Green Points, weekly streaks, and tier progression drive measurable long-term behavioral change.",
+    title: "Sell from Home",
+    desc: "Create a listing in one tap. Local Kabadiwalas will come to your door, weigh it, and pay you.",
   },
   {
     Icon: BotIcon,
     title: "EcoBot Assistant",
-    desc: "24/7 LLM assistant trained on India's waste management policies, segregation rules, and IWIS platform.",
+    desc: "Got questions about what can be recycled? Chat with our 24/7 AI assistant to get answers instantly.",
   },
 ];
 
-const STATS = [
-  { value: "62M", label: "Tonnes of waste generated annually in India" },
-  { value: "2070", label: "India's Net Zero target year" },
-  { value: "1500+", label: "Scans classified by the AI engine" },
+const STEPS = [
+  {
+    step: "1",
+    title: "Scan your waste",
+    desc: "Use your camera to let our AI identify the material and show you the current market price.",
+  },
+  {
+    step: "2",
+    title: "Local Pickup",
+    desc: "A verified local recycler accepts your listing and comes to your location to pick it up.",
+  },
+  {
+    step: "3",
+    title: "Get Paid",
+    desc: "The recycler weighs the material, and you get paid instantly based on the actual weight.",
+  },
 ];
 
 export default function Home() {
@@ -49,124 +46,92 @@ export default function Home() {
 
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section className="pt-16 pb-20 border-b border-[var(--border)]">
-        <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md border border-[var(--border)] bg-[var(--surface-raised)] text-xs font-medium text-[var(--text-secondary)] mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
-            India Net Zero 2070 · BRSR Aligned · Scope 3 Reporting
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--accent-border)] bg-[var(--accent-subtle)] text-xs font-semibold text-[var(--accent-text)] mb-6">
+            <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
+            Live in Jammu
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-semibold text-[var(--text-primary)] leading-tight tracking-tight mb-5">
-            Intelligent Waste<br />Information System
+          <h1 className="text-4xl sm:text-6xl font-bold text-[var(--text-primary)] leading-tight tracking-tight mb-6">
+            Know the value. <br />
+            <span className="text-[var(--accent)]">Sell the waste.</span> <br />
+            Help India stay clean.
           </h1>
 
-          <p className="text-lg text-[var(--text-secondary)] leading-relaxed max-w-xl mb-8">
-            AI-powered waste management for governments, municipalities, ESG teams, and recyclers.
-            From household scanning to city-level carbon accounting — in one platform.
+          <p className="text-lg text-[var(--text-secondary)] leading-relaxed max-w-xl mx-auto mb-10">
+            Don't throw away recyclable materials. IWIS connects you directly with local recyclers so you can sell your waste from home.
           </p>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
             <Link
               href="/scan"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg)] rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[var(--text-primary)] text-[var(--bg)] rounded-xl text-[15px] font-semibold shadow-md hover:opacity-90 hover:scale-[1.02] transition-all duration-200"
             >
-              Open AI Scanner
-              <ArrowRightIcon size={13} />
+              Scan & Sell Now
+              <ScanIcon size={16} />
             </Link>
             <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 px-4 py-2 border border-[var(--border)] text-[var(--text-secondary)] rounded-lg text-sm font-medium hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] transition-colors"
+              href="/signup"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--text-primary)] rounded-xl text-[15px] font-medium shadow-sm hover:bg-[var(--surface-raised)] transition-all duration-200"
             >
-              View Dashboard
+              Create Account
             </Link>
           </div>
         </div>
       </section>
 
-      {/* ── Stats row ────────────────────────────────────────── */}
-      <section className="py-10 border-b border-[var(--border)]">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-0 divide-y sm:divide-y-0 sm:divide-x divide-[var(--border)]">
-          {STATS.map(({ value, label }) => (
-            <div key={value} className="px-0 sm:px-8 py-4 sm:py-0 first:pl-0 last:pr-0">
-              <p className="text-2xl font-semibold text-[var(--text-primary)] mb-0.5">{value}</p>
-              <p className="text-sm text-[var(--text-secondary)]">{label}</p>
+      {/* ── How it works ──────────────────────────────────────── */}
+      <section className="py-20 border-b border-[var(--border)]">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl font-bold text-[var(--text-primary)] mb-4">Three simple steps</h2>
+          <p className="text-[var(--text-secondary)]">From trash to cash in minutes.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          {STEPS.map((s, idx) => (
+            <div key={idx} className="relative flex flex-col items-center text-center p-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent-border)] hover:bg-[var(--accent-subtle)] transition-colors group">
+              <div className="w-12 h-12 rounded-full bg-[var(--text-primary)] text-[var(--bg)] flex items-center justify-center text-lg font-bold mb-6 shadow-sm group-hover:scale-110 transition-transform">
+                {s.step}
+              </div>
+              <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-3">{s.title}</h3>
+              <p className="text-[var(--text-secondary)] leading-relaxed">{s.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── Core Technology ──────────────────────────────────── */}
-      <section className="py-16">
-        <div className="mb-10">
+      {/* ── Features ──────────────────────────────────── */}
+      <section className="py-20">
+        <div className="mb-12">
           <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
-            Platform
+            Why IWIS?
           </p>
           <h2 className="text-2xl font-semibold text-[var(--text-primary)]">
-            Core technology
+            Everything you need. Nothing you don't.
           </h2>
-          <p className="mt-2 text-sm text-[var(--text-secondary)] max-w-lg">
-            Built for real-world deployment at scale — from individual households to city-level administration.
-          </p>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-px bg-[var(--border)] border border-[var(--border)] rounded-xl overflow-hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {FEATURES.map(({ Icon, title, desc }) => (
-            <div
-              key={title}
-              className="bg-[var(--surface)] p-6 hover:bg-[var(--surface-raised)] transition-colors"
-            >
-              <div className="w-8 h-8 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] flex items-center justify-center text-[var(--text-secondary)] mb-4">
-                <Icon size={14} />
-              </div>
-              <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1.5">{title}</h3>
+            <div key={title} className="p-6 rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)] hover:border-[var(--border-strong)] transition-colors">
+              <Icon size={24} className="text-[var(--text-primary)] mb-4" />
+              <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">{title}</h3>
               <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── CTA banner ───────────────────────────────────────── */}
-      <section className="py-8 px-6 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">
-            Ready to track your environmental impact?
-          </h3>
-          <p className="text-sm text-[var(--text-secondary)]">
-            Create an account to start scanning, earning Green Points, and generating BRSR-compliant ESG reports.
-          </p>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <Link
-            href="/signup"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--text-primary)] text-[var(--bg)] rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
-          >
-            Get started
-            <ArrowRightIcon size={13} />
-          </Link>
-          <Link
-            href="/login"
-            className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-          >
-            Sign in
-          </Link>
-        </div>
-      </section>
-
-      {/* ── Compliance row ───────────────────────────────────── */}
-      <section className="pb-16">
-        <div className="flex flex-wrap items-center gap-6 text-xs text-[var(--text-tertiary)]">
-          {[
-            "BRSR Reporting",
-            "India NDC Aligned",
-            "Scope 3 Compliant",
-            "WCAG 2.1 AA",
-            "Open Source",
-          ].map((badge) => (
-            <span key={badge} className="flex items-center gap-1.5">
-              <CheckIcon size={11} className="text-[var(--accent)]" />
-              {badge}
-            </span>
-          ))}
-        </div>
+      {/* ── Bottom CTA ───────────────────────────────────────── */}
+      <section className="py-16 mt-8 rounded-3xl bg-[var(--text-primary)] text-center text-[var(--bg)] mb-20">
+        <h2 className="text-3xl font-bold mb-6">Ready to start earning?</h2>
+        <Link
+          href="/signup"
+          className="inline-flex items-center gap-2 px-8 py-4 bg-[var(--bg)] text-[var(--text-primary)] rounded-xl text-[15px] font-bold hover:scale-105 transition-transform shadow-lg"
+        >
+          Create a free account
+          <ArrowRightIcon size={16} />
+        </Link>
       </section>
     </div>
   );

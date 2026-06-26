@@ -11,7 +11,8 @@ type Listing = {
   id: string;
   citizenName?: string;
   materialType: string;
-  estimatedWeightKg: number;
+  wasteVolume?: string;
+  estimatedWeightKg?: number;
   pickupAddress: string;
   description?: string;
   createdAt: string;
@@ -25,12 +26,17 @@ export default function RecyclerFeedPage() {
   const [error, setError] = useState("");
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    // For MVP, we simulate sending the recycler's Jammu coordinates
+  const fetchListings = () => {
+    setLoading(true);
     apiFetch("/listings/nearby?lat=32.7266&lng=74.8570&radiusKm=20")
       .then((data) => setListings(data))
       .catch((err) => setError(err.message || "Failed to load feed."))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    // For MVP, we simulate sending the recycler's Jammu coordinates
+    fetchListings();
   }, []);
 
   const handleAccept = async (id: string) => {
@@ -45,7 +51,12 @@ export default function RecyclerFeedPage() {
       // Redirect to scheduling page
       router.push(`/recycler/pickup/${id}`);
     } catch (err: any) {
-      setError(err.backendMessage || err.message || "Failed to accept listing.");
+      if (err.statusCode === 409) {
+        setError("This listing was just accepted by another recycler. We've refreshed your nearby listings.");
+        fetchListings();
+      } else {
+        setError(err.backendMessage || err.message || "Failed to accept listing.");
+      }
     } finally {
       setAcceptingId(null);
     }
@@ -94,7 +105,11 @@ export default function RecyclerFeedPage() {
                 <div className="flex items-start justify-between mb-3">
                   <div>
                     <h3 className="font-semibold text-[var(--text-primary)] text-lg">
-                      {item.materialType} <span className="text-[var(--text-secondary)] font-normal text-sm ml-1">({item.estimatedWeightKg} kg)</span>
+                      {item.materialType} 
+                      <span className="text-[var(--text-secondary)] font-normal text-sm ml-2">
+                        {item.wasteVolume || "Medium Bag"} 
+                        {item.estimatedWeightKg ? ` (${item.estimatedWeightKg} kg)` : ""}
+                      </span>
                     </h3>
                     <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
                       Listed by {item.citizenName || "Citizen"} • {new Date(item.createdAt).toLocaleDateString()}
@@ -108,7 +123,7 @@ export default function RecyclerFeedPage() {
                 </div>
 
                 <div className="text-sm text-[var(--text-secondary)] mb-4 flex-1">
-                  <p className="font-medium text-[var(--text-primary)] mb-1">Pickup Address:</p>
+                  <p className="font-medium text-[var(--text-primary)] mb-1">Collection Address:</p>
                   <p className="line-clamp-2">{item.pickupAddress}</p>
                   {item.description && (
                     <p className="mt-2 text-xs italic opacity-80">"{item.description}"</p>
@@ -123,11 +138,11 @@ export default function RecyclerFeedPage() {
                   {acceptingId === item.id ? (
                     <span className="flex items-center gap-2">
                       <span className="w-3.5 h-3.5 border-2 border-[var(--bg)] border-t-transparent rounded-full animate-spin" />
-                      Accepting...
+                      Confirming...
                     </span>
                   ) : (
                     <>
-                      Accept Pickup
+                      Accept Collection
                       <ArrowRightIcon size={14} />
                     </>
                   )}

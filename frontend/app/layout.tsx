@@ -2,7 +2,9 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Navbar from "@/components/layout/Navbar";
 import { TaskProvider } from "@/components/providers/TaskProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { TaskOverlay } from "@/components/layout/TaskOverlay";
+import EcoBotFAB from "@/components/layout/EcoBotFAB";
 
 export const metadata: Metadata = {
   title: "IWIS — Intelligent Waste Information System",
@@ -16,21 +18,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{const t=localStorage.getItem('theme');if(t==='Dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}else if(t==='Light'){document.documentElement.classList.remove('dark')}}catch(e){}`,
-          }}
-        />
-      </head>
       <body className="font-sans antialiased bg-[var(--bg)] text-[var(--text-primary)] min-h-screen">
-        <TaskProvider>
-          <Navbar />
-          <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-            {children}
-          </main>
-          <TaskOverlay />
-        </TaskProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <TaskProvider>
+            <Navbar />
+            <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+              {children}
+            </main>
+            <EcoBotFAB />
+            <TaskOverlay />
+          </TaskProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

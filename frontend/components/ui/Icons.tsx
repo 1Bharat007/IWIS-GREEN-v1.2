@@ -37,6 +37,7 @@ export const ArrowLeftIcon = icon("M13 8H3M7 4L3 8l4 4");
 export const SearchIcon = icon("M7 13A6 6 0 107 1a6 6 0 000 12zM12.5 12.5L15 15");
 export const SettingsIcon = icon("M8 10a2 2 0 100-4 2 2 0 000 4zM8 1v2M8 13v2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M1 8h2M13 8h2M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41");
 export const LogOutIcon = icon("M10 2h4v12h-4M7 11l3-3-3-3M1 8h9");
+export const BellIcon = icon("M8 2a4 4 0 00-4 4v3l-2 3h12l-2-3V6a4 4 0 00-4-4zM6 13a2 2 0 004 0");
 
 // Content
 export const ScanIcon = icon("M1 4V2h3M12 1h3v3M15 12v3h-3M4 15H1v-3M6 6h4v4H6z");

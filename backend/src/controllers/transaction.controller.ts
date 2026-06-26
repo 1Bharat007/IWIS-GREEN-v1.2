@@ -110,3 +110,41 @@ export const getEarningsSummary = async (req: any, res: Response) => {
     res.status(500).json({ message: "Failed to fetch earnings summary." });
   }
 };
+
+export const submitFeedback = async (req: any, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { rating, comment } = req.body;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: "Valid rating between 1 and 5 is required." });
+    }
+
+    const db = await getDB();
+    const transaction = await db.get("SELECT * FROM transactions WHERE id = ?", id);
+
+    if (!transaction) return res.status(404).json({ message: "Transaction not found." });
+    if (transaction.citizenId !== req.user.id) return res.status(403).json({ message: "Only the citizen can submit feedback." });
+    if (transaction.feedbackRating) return res.status(400).json({ message: "Feedback already submitted for this transaction." });
+    if (transaction.status !== 'completed') return res.status(400).json({ message: "Transaction must be completed to submit feedback." });
+
+    // Update transaction with feedback
+    await db.run(
+      "UPDATE transactions SET feedbackRating = ?, feedbackComment = ? WHERE id = ?",
+      [rating, comment || null, id]
+    );
+
+    // Update recycler average rating
+    const allRatings = await db.all("SELECT feedbackRating FROM transactions WHERE recyclerId = ? AND feedbackRating IS NOT NULL", transaction.recyclerId);
+    
+    if (allRatings.length > 0) {
+      const avg = allRatings.reduce((sum: number, row: any) => sum + row.feedbackRating, 0) / allRatings.length;
+      await db.run("UPDATE recycler_profiles SET rating = ? WHERE userId = ?", [avg.toFixed(1), transaction.recyclerId]);
+    }
+
+    res.json({ message: "Feedback submitted successfully." });
+  } catch (err) {
+    console.error("[submitFeedback] error:", err);
+    res.status(500).json({ message: "Failed to submit feedback." });
+  }
+};
