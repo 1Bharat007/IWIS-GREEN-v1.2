@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   ScanIcon, ShoppingIcon, BotIcon,
-  ArrowRightIcon, CheckIcon, IndianRupeeIcon, BarChartIcon
+  ArrowRightIcon, CheckIcon
 } from "@/components/ui/Icons";
 
 const FEATURES = [
