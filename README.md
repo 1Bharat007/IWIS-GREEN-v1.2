@@ -1,180 +1,154 @@
 <div align="center">
+  <img src="assets/screenshots/logo.png" alt="IWIS Logo" width="150" />
+  <h1>IWIS (Intelligent Waste Information System)</h1>
+  <p><em>AI-Powered. Geospatial. Gamified. The Digital Infrastructure for the Circular Economy.</em></p>
 
-# 🌿 IWIS Green
-
-**Intelligent Waste Information System — AI-powered waste management for India's Net Zero 2070 mission**
-
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-iwis--green--v103.vercel.app-4ade80?style=for-the-badge&logo=vercel&logoColor=white)](https://iwis-green-v103.vercel.app)
-[![Backend](https://img.shields.io/badge/API-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white)](https://iwis-green-v1-2-1.onrender.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
-
-![TypeScript](https://img.shields.io/badge/TypeScript-98.8%25-3178C6?style=flat-square&logo=typescript&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=flat-square&logo=next.js)
-![Node.js](https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=node.js)
-![Gemini AI](https://img.shields.io/badge/Gemini-AI-4285F4?style=flat-square&logo=google&logoColor=white)
-
+  [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](#)
+  [![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat&logo=nextdotjs&logoColor=white)](#)
+  [![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=nodedotjs&logoColor=white)](#)
+  [![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat&logo=sqlite&logoColor=white)](#)
+  [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
 </div>
 
 ---
 
-## 🎯 What is IWIS?
-
-IWIS (Intelligent Waste Information System) is a **full-stack AI + IoT platform** tackling India's 62 million tonne annual waste crisis. It combines **computer vision**, **carbon accounting**, and **gamified incentives** to make waste management measurable, rewarding, and scalable — from individual households to city-level administration.
-
-> 🏆 Aligned with **India's NDC commitments** and **BRSR reporting standards**
+## 📖 Table of Contents
+- [Problem Statement](#-problem-statement)
+- [The Solution](#-the-solution)
+- [Key Features](#-key-features)
+- [Architecture](#-architecture)
+- [Technology Stack](#-technology-stack)
+- [Screenshots](#-screenshots)
+- [Installation Guide](#-installation-guide)
+- [Environment Variables](#-environment-variables)
+- [Documentation](#-documentation)
+- [Roadmap & Security](#-roadmap--security)
+- [Contributing](#-contributing)
+- [License](#-license)
 
 ---
 
-## ✨ Core Features
+## 🌍 Problem Statement
+Urban waste management is fragmented. Citizens lack the incentive and knowledge to recycle bulk materials properly, and local recyclers (Kabadiwalas) operate on inefficient, manual routing systems with no visibility into where waste actually is. This results in millions of tons of recyclable material ending up in landfills.
 
-| Feature | Description |
-|---|---|
-| 📸 **AI Waste Scanner** | Multi-class classification (plastic, organic, metal, glass) using **Gemini Vision AI** with confidence scores |
-| 🌱 **Carbon Accounting** | Calculates avoided CO₂ per scan batch — Scope 3 compliant |
-| 🏆 **Green Points Wallet** | Gamified reward system with weekly streaks, leaderboards & tier progression (Bronze → Gold) |
-| 🗺️ **Waste Hotspot Map** | Leaflet-powered geospatial map tracking illegal dumping with real-time coordinates |
-| ♻️ **Circular Marketplace** | Connects citizens to MRF (Material Recovery Facilities) operators with a bid-based system |
-| 🤖 **EcoBot AI Assistant** | 24/7 AI chatbot trained on India's waste management policies |
-| 🔐 **Auth System** | JWT-based auth with email/password reset via Gmail SMTP |
+## 💡 The Solution
+IWIS bridges the gap by providing an **AI-powered marketplace**. 
+1. A citizen snaps a photo of their waste. 
+2. The AI identifies it, calculates its value, and creates a listing.
+3. Nearby recyclers see the listing on a geospatial feed and drive directly to collect it.
+
+## ✨ Key Features
+* 🤖 **AI Scanner:** Gemini Vision integration for zero-friction material classification.
+* 📍 **Geospatial Feed:** Haversine distance-based routing for recyclers to find waste.
+* 🏆 **Gamification Engine:** Citizens earn "Green Points" and level up ecologically.
+* 💸 **Dynamic Pricing:** Localized scrap value calculator engine.
+* 🔒 **Role-Based Access:** Isolated Citizen and Recycler dashboard experiences.
 
 ---
 
 ## 🏗️ Architecture
 
+```mermaid
+graph LR
+    Citizen[Citizen App] -->|Image Upload| API[Express API]
+    API -->|Base64 Payload| Gemini[Gemini Pro Vision]
+    Gemini -->|Classification| API
+    API -->|Save Listing| DB[(SQLite)]
+    DB -->|Haversine Query| Recycler[Recycler App]
 ```
-iwis/
-├── frontend/          # Next.js 15 App Router
-│   ├── app/
-│   │   ├── scan/          # AI waste scanner
-│   │   ├── dashboard/     # User stats & carbon metrics
-│   │   ├── map/           # Leaflet hotspot map
-│   │   ├── marketplace/   # Circular economy listings
-│   │   ├── leaderboard/   # Community rankings
-│   │   ├── chat/          # EcoBot AI assistant
-│   │   └── history/       # Past scan history
-│   └── lib/
-│       ├── api.ts         # Centralized API client
-│       └── session.ts     # JWT session management
-│
-└── backend/           # Node.js + Express + TypeScript
-    └── src/
-        ├── controllers/   # Business logic
-        ├── routes/        # API route definitions
-        ├── middleware/     # JWT auth guard
-        ├── utils/         # Gemini AI fallback handler
-        └── db.ts          # SQLite schema & migrations
-```
+
+## 🛠️ Technology Stack
+
+| Layer | Technology | Description |
+| --- | --- | --- |
+| **Frontend** | Next.js (React) | SPA built with responsive Vanilla CSS and interactive charts (Recharts). |
+| **Backend** | Express (Node.js) | REST API using Zod for robust request validation. |
+| **Database** | SQLite | Serverless SQL database (Targeted for PostgreSQL migration in v2). |
+| **AI Vision** | Gemini API | Multi-modal large language model for material recognition. |
+| **Auth** | JWT & Bcrypt | Stateless authentication with Role-Based Access Control. |
 
 ---
 
-## 🛠️ Tech Stack
+## 📸 Screenshots
+*(Sample images from the v1.0 Pilot Release)*
 
-**Frontend**
-- [Next.js 15](https://nextjs.org/) (App Router) + TypeScript
-- Tailwind CSS + Custom animations
-- Leaflet.js for interactive maps
-- Recharts for data visualization
-
-**Backend**
-- Node.js + Express 5 + TypeScript
-- SQLite (via `sqlite`/`sqlite3`) — zero-infrastructure DB
-- Gemini AI (`@google/genai`) with multi-key fallback system
-- Nodemailer (Gmail SMTP) for transactional emails
-- JWT + bcrypt for authentication
-
-**Deployment**
-- 🖥️ Frontend → [Vercel](https://vercel.com)
-- ⚙️ Backend → [Render](https://render.com)
+| Citizen Dashboard | AI Scanner | Recycler Geospatial Feed |
+| :---: | :---: | :---: |
+| <img src="assets/screenshots/dashboard.png" width="250" /> | <img src="assets/screenshots/scanner.png" width="250" /> | <img src="assets/screenshots/feed.png" width="250" /> |
 
 ---
 
-## ⚡ Local Setup
+## 🚀 Installation Guide
 
 ### Prerequisites
-- Node.js 18+
-- A [Gemini API Key](https://aistudio.google.com/app/apikey)
+- Node.js `v20+`
+- Git
 
-### Backend
+### 1. Clone the Repository
+```bash
+git clone https://github.com/your-username/iwis.git
+cd iwis
+```
 
+### 2. Setup the Backend
 ```bash
 cd backend
-```
-
-Create `.env`:
-```env
-GEMINI_API_KEY=your_gemini_key
-JWT_SECRET=your_secret
-EMAIL_USER=your_gmail@gmail.com
-EMAIL_PASS=your_16char_app_password
-```
-
-```bash
 npm install
-npm run dev        # TypeScript dev server (ts-node-dev)
-# or
-npm run build      # Compile to dist/
-npm start          # Run compiled output
+cp .env.example .env
+# Edit .env with your Gemini API Key and JWT Secret
+npm run build
+npm start
 ```
+The API will start on `http://localhost:5000`.
 
-### Frontend
-
+### 3. Setup the Frontend
+Open a new terminal window:
 ```bash
 cd frontend
-```
-
-Create `.env.local`:
-```env
-NEXT_PUBLIC_API_URL=http://localhost:5000
-```
-
-```bash
 npm install
-npm run dev
+cp .env.example .env.local
+npm run build
+npm start
 ```
-
-Open [http://localhost:3000](http://localhost:3000) 🚀
+The application will start on `http://localhost:3000`.
 
 ---
 
-## 🌐 Live Deployment
+## 🔐 Environment Variables
 
-| Service | URL |
-|---|---|
-| Frontend (Vercel) | [iwis-green-v103.vercel.app](https://iwis-green-v103.vercel.app) |
-| Backend (Render) | [iwis-green-v1-2-1.onrender.com](https://iwis-green-v1-2-1.onrender.com) |
-
-> ⚠️ The backend runs on Render's **free tier** — it may cold-start in ~30s on first request.
+| Variable | Location | Required | Description |
+| --- | --- | --- | --- |
+| `GEMINI_API_KEY` | `backend/.env` | ✅ | Primary API key for the Vision AI. |
+| `JWT_SECRET` | `backend/.env` | ✅ | Cryptographic key for signing sessions. |
+| `DB_PATH` | `backend/.env` | ❌ | Defaults to `./iwis.db`. |
+| `NEXT_PUBLIC_API_URL`| `frontend/.env.local` | ❌ | Defaults to `http://localhost:5000/api`. |
 
 ---
 
-## 📊 Database Schema
+## 📚 Documentation
+We maintain comprehensive documentation in the `/docs` directory:
+- [System Design & Architecture](docs/SYSTEM_DESIGN.md)
+- [API Reference](docs/API_REFERENCE.md)
+- [Database Schema](docs/DATABASE_SCHEMA.md)
+- [Security Model](docs/SECURITY_MODEL.md)
 
-```sql
-users           -- id, email, password, role, totalCO2, streak, tier, greenPoints
-batches         -- id, userId, category, confidence, co2, lat, lng, timestamp
-listings        -- id, batchId, userId, status, priceRange
-bids            -- id, listingId, recyclerId, offerAmount, status
-reset_tokens    -- token, userId, expiresAt
-```
+---
+
+## 🗺️ Roadmap & Security
+- Check out our transparent [Known Limitations](docs/KNOWN_LIMITATIONS.md) and future [Roadmap](docs/ROADMAP.md).
+- Found a vulnerability? Please review our [Security Policy](docs/SECURITY_MODEL.md) and report it responsibly.
 
 ---
 
 ## 🤝 Contributing
-
-1. Fork the repo
-2. Create a feature branch: `git checkout -b feat/amazing-feature`
-3. Commit changes: `git commit -m 'feat: add amazing feature'`
-4. Push: `git push origin feat/amazing-feature`
-5. Open a Pull Request
+We welcome contributions from researchers, developers, and municipalities! Please read our [Contributing Guidelines](docs/CONTRIBUTING.md) and [Code of Conduct](docs/CODE_OF_CONDUCT.md) before submitting a Pull Request.
 
 ---
 
-## 📄 License
-
-MIT © [1Bharat007](https://github.com/1Bharat007)
-
----
+## 📜 License
+This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
 
 <div align="center">
-  <sub>Built with 💚 to tackle India's waste crisis — one scan at a time</sub>
+  <i>Built for a sustainable future. 🌍</i>
 </div>
