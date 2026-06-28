@@ -1,7 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  env: {
+    NEXT_PUBLIC_FIREBASE_API_KEY: "AIzaSyCtS1O6qfwkyPuJwCZMrZVwm2LZ67fRaR4",
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "iwis-ec993.firebaseapp.com",
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID: "iwis-ec993",
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: "iwis-ec993.firebasestorage.app",
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: "1049265942349",
+    NEXT_PUBLIC_FIREBASE_APP_ID: "1:1049265942349:web:59607891b715d701021104",
+    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: "G-RFYKQMN1L5"
+  }
 };
 
 export default nextConfig;
