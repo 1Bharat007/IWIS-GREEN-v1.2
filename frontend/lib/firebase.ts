@@ -10,6 +10,9 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Log the resolved config during runtime to debug environment variables
+console.log("Firebase Config Resolved:", firebaseConfig);
+
 // Initialize Firebase only if config is provided and not already initialized
 const app = getApps().length === 0 && firebaseConfig.apiKey 
   ? initializeApp(firebaseConfig) 
