@@ -1,3 +1,7 @@
-﻿*       @iwis-maintainers
-/backend  @iwis-backend
-/frontend @iwis-frontend
+# IWIS CODEOWNERS
+# These owners will be the default reviewers for pull requests.
+
+*       @1Bharat007
+/backend/ @1Bharat007
+/frontend/ @1Bharat007
+/docs/   @1Bharat007

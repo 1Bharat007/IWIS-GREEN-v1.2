@@ -16,8 +16,6 @@ class VectorDB {
   private isInitialized = false;
 
   constructor() {
-    // Note: This uses the first key. For production robustness, 
-    // it could use the rotation logic, but embedding is very cheap and rarely fails.
     const key = process.env.GEMINI_API_KEY || "";
     this.ai = new GoogleGenAI({ apiKey: key });
   }
@@ -28,42 +26,77 @@ class VectorDB {
    */
   async initialize() {
     if (this.isInitialized) return;
-    console.log("[RAG] Initializing Vector DB...");
-    
-    const kbPath = path.join(__dirname, "../../knowledge");
-    if (!fs.existsSync(kbPath)) {
-      console.warn("[RAG] Knowledge base directory not found.");
+
+    if (process.env.ENABLE_RAG !== "true") {
+      console.log("[RAG] ENABLE_RAG is false. RAG Disabled.");
+      this.isInitialized = true;
       return;
     }
 
-    const files = fs.readdirSync(kbPath).filter(f => f.endsWith(".md"));
-    
-    for (const file of files) {
-      const content = fs.readFileSync(path.join(kbPath, file), "utf-8");
-      this.chunkMarkdown(file, content);
-    }
+    console.log("[RAG] Initializing Vector DB...");
 
-    console.log(`[RAG] Created ${this.chunks.length} chunks. Generating embeddings...`);
-    
-    // Batch process embeddings to respect API limits
-    const batchSize = 10;
-    for (let i = 0; i < this.chunks.length; i += batchSize) {
-      const batch = this.chunks.slice(i, i + batchSize);
-      await Promise.all(batch.map(async (chunk) => {
-        try {
-          const result = await this.ai.models.embedContent({
-            model: "text-embedding-004",
-            contents: chunk.text,
-          });
-          chunk.embedding = result.embeddings?.[0]?.values;
-        } catch (err) {
-          console.error(`[RAG] Failed to embed chunk ${chunk.id}`, err);
-        }
-      }));
-    }
+    try {
+      const kbPath = path.join(__dirname, "../../knowledge");
+      if (!fs.existsSync(kbPath)) {
+        console.warn("[RAG] Knowledge base directory not found. Running EcoBot without retrieval.");
+        this.isInitialized = true;
+        return;
+      }
 
-    this.isInitialized = true;
-    console.log("[RAG] Vector DB Initialization complete.");
+      const files = fs.readdirSync(kbPath).filter((f) => f.endsWith(".md"));
+      
+      for (const file of files) {
+        const content = fs.readFileSync(path.join(kbPath, file), "utf-8");
+        this.chunkMarkdown(file, content);
+      }
+
+      console.log(`[RAG] Created ${this.chunks.length} chunks. Generating embeddings...`);
+      
+      let embeddedCount = 0;
+      let failedCount = 0;
+      const startTime = Date.now();
+
+      // Batch process embeddings to respect API limits
+      const batchSize = 10;
+      for (let i = 0; i < this.chunks.length; i += batchSize) {
+        const batch = this.chunks.slice(i, i + batchSize);
+        await Promise.all(batch.map(async (chunk) => {
+          try {
+            const result = await this.ai.models.embedContent({
+              model: "gemini-embedding-2",
+              contents: chunk.text,
+            });
+            chunk.embedding = result.embeddings?.[0]?.values;
+            if (chunk.embedding) embeddedCount++;
+          } catch (err) {
+            failedCount++;
+          }
+        }));
+      }
+
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      
+      console.log(`\n--- Embedding Summary ---`);
+      console.log(`Documents: ${files.length}`);
+      console.log(`Chunks: ${this.chunks.length}`);
+      console.log(`Embedded: ${embeddedCount}`);
+      console.log(`Failed: ${failedCount}`);
+      console.log(`Duration: ${duration}s`);
+      console.log(`-------------------------\n`);
+
+      if (failedCount === this.chunks.length && this.chunks.length > 0) {
+        console.warn("[RAG] All embeddings failed. Running EcoBot without retrieval.");
+      } else {
+        console.log("[RAG] Vector DB Initialization complete.");
+      }
+
+      this.isInitialized = true;
+    } catch (error) {
+      console.error("[RAG] Embedding initialization skipped. Reason:");
+      console.error(error instanceof Error ? error.message : "Unknown error");
+      console.log("[RAG] Running EcoBot without retrieval.");
+      this.isInitialized = true; // Prevent endless retry
+    }
   }
 
   /**
@@ -74,7 +107,6 @@ class VectorDB {
     const titleMatch = sections[0].match(/^#\s+(.*)/);
     const category = titleMatch ? titleMatch[1] : filename.replace(".md", "");
 
-    // Process the rest of the sections
     for (let i = 1; i < sections.length; i++) {
       const section = sections[i].trim();
       if (!section) continue;
@@ -85,7 +117,6 @@ class VectorDB {
 
       if (!body) continue;
 
-      // Construct a highly contextual chunk string for the embedding model
       const contextualText = `Category: ${category}\nTopic: ${heading}\nInformation: ${body}`;
       
       this.chunks.push({
@@ -97,9 +128,6 @@ class VectorDB {
     }
   }
 
-  /**
-   * Calculates cosine similarity between two vectors.
-   */
   private cosineSimilarity(vecA: number[], vecB: number[]): number {
     let dotProduct = 0;
     let normA = 0;
@@ -113,17 +141,14 @@ class VectorDB {
     return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
   }
 
-  /**
-   * Embeds the query and searches the vector space for the most similar chunk.
-   * @param query The user's question
-   * @param threshold Minimum similarity score (e.g. 0.85) to return a direct result
-   */
   async search(query: string, threshold = 0.85): Promise<Chunk | null> {
-    if (!this.isInitialized || this.chunks.length === 0) return null;
+    if (process.env.ENABLE_RAG !== "true" || !this.isInitialized || this.chunks.length === 0) {
+      return null;
+    }
 
     try {
       const queryEmbedResult = await this.ai.models.embedContent({
-        model: "text-embedding-004",
+        model: "gemini-embedding-2",
         contents: query,
       });
       const queryVector = queryEmbedResult.embeddings?.[0]?.values;
@@ -149,7 +174,7 @@ class VectorDB {
       console.log(`[RAG] No match found above threshold. Highest was ${highestScore.toFixed(3)}`);
       return null;
     } catch (err) {
-      console.error("[RAG] Search failed:", err);
+      console.error("[RAG] Search failed:", err instanceof Error ? err.message : "Unknown error");
       return null;
     }
   }

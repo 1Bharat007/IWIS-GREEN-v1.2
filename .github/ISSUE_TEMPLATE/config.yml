@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: IWIS Community Support
+    url: https://github.com/1Bharat007/IWIS-GREEN-v1.2/discussions
+    about: Please ask and answer questions here.
+  - name: Security Vulnerabilities
+    url: https://github.com/1Bharat007/IWIS-GREEN-v1.2/security/policy
+    about: Please report security vulnerabilities here rather than opening an issue.

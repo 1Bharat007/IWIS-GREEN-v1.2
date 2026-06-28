@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4ade80;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Base Shield/Hexagon representing infrastructure -->
+  <path d="M256 32l200 96v176c0 114.7-88.7 220.2-200 256-111.3-35.8-200-141.3-200-256V128l200-96z" fill="#0f172a" />
+  
+  <!-- Outer glowing stroke -->
+  <path d="M256 32l200 96v176c0 114.7-88.7 220.2-200 256-111.3-35.8-200-141.3-200-256V128l200-96z" fill="none" stroke="url(#grad1)" stroke-width="16" />
+  
+  <!-- Circuit/Leaf hybrid representing AI + Sustainability -->
+  <path d="M256 120C170 120 120 180 120 256c0 76 50 136 136 136 86 0 136-60 136-136S342 120 256 120zm0 232c-60 0-96-40-96-96s36-96 96-96 96 40 96 96-36 96-96 96z" fill="url(#grad1)" />
+  
+  <!-- Inner Data Node (AI) -->
+  <circle cx="256" cy="256" r="40" fill="#4ade80" />
+  
+  <!-- I W I S Text below icon if needed, but standard is just the icon -->
+</svg>

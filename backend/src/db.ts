@@ -102,6 +102,7 @@ const executeInitDB = async () => {
 
   // New user columns for MVP
   try { await dbInstance.run("ALTER TABLE users ADD COLUMN phone TEXT"); } catch (e) {}
+  try { await dbInstance.run("ALTER TABLE users ADD COLUMN phoneVerified INTEGER DEFAULT 0"); } catch (e) {}
   try { await dbInstance.run("ALTER TABLE users ADD COLUMN address TEXT"); } catch (e) {}
   try { await dbInstance.run("ALTER TABLE users ADD COLUMN city TEXT"); } catch (e) {}
   try { await dbInstance.run("ALTER TABLE users ADD COLUMN state TEXT"); } catch (e) {}

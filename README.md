@@ -1,154 +1,174 @@
 <div align="center">
-  <img src="assets/screenshots/logo.png" alt="IWIS Logo" width="150" />
-  <h1>IWIS (Intelligent Waste Information System)</h1>
-  <p><em>AI-Powered. Geospatial. Gamified. The Digital Infrastructure for the Circular Economy.</em></p>
+  <img src="./assets/social_preview.png" alt="IWIS Banner" width="100%" />
 
-  [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-  [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](#)
-  [![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat&logo=nextdotjs&logoColor=white)](#)
-  [![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=nodedotjs&logoColor=white)](#)
-  [![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat&logo=sqlite&logoColor=white)](#)
-  [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.md)
+  <br />
+  <br />
+
+  <img src="./assets/logo.svg" alt="IWIS Logo" width="80" height="80" />
+
+  <h1 align="center">IWIS</h1>
+  <p align="center">
+    <strong>Waste intelligence for the real world.</strong>
+  </p>
+  
+  <p align="center">
+    Track your environmental impact, discover recyclers, and participate in India's leading circular economy network.
+  </p>
+
+  <p align="center">
+    <a href="https://github.com/1Bharat007/IWIS-GREEN-v1.2/blob/main/LICENSE">
+      <img src="https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge&color=22c55e" alt="License" />
+    </a>
+    <a href="https://github.com/1Bharat007/IWIS-GREEN-v1.2/actions">
+      <img src="https://img.shields.io/badge/build-passing-brightgreen.svg?style=for-the-badge&color=22c55e" alt="Build Status" />
+    </a>
+    <a href="https://nodejs.org">
+      <img src="https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg?style=for-the-badge&color=22c55e" alt="Node Version" />
+    </a>
+    <a href="https://nextjs.org/">
+      <img src="https://img.shields.io/badge/next.js-14-black.svg?style=for-the-badge&logo=next.js&color=09090b" alt="Next.js" />
+    </a>
+  </p>
 </div>
 
 ---
 
-## 📖 Table of Contents
-- [Problem Statement](#-problem-statement)
-- [The Solution](#-the-solution)
-- [Key Features](#-key-features)
-- [Architecture](#-architecture)
-- [Technology Stack](#-technology-stack)
-- [Screenshots](#-screenshots)
-- [Installation Guide](#-installation-guide)
-- [Environment Variables](#-environment-variables)
-- [Documentation](#-documentation)
-- [Roadmap & Security](#-roadmap--security)
-- [Contributing](#-contributing)
-- [License](#-license)
-
----
-
-## 🌍 Problem Statement
-Urban waste management is fragmented. Citizens lack the incentive and knowledge to recycle bulk materials properly, and local recyclers (Kabadiwalas) operate on inefficient, manual routing systems with no visibility into where waste actually is. This results in millions of tons of recyclable material ending up in landfills.
-
-## 💡 The Solution
-IWIS bridges the gap by providing an **AI-powered marketplace**. 
-1. A citizen snaps a photo of their waste. 
-2. The AI identifies it, calculates its value, and creates a listing.
-3. Nearby recyclers see the listing on a geospatial feed and drive directly to collect it.
-
-## ✨ Key Features
-* 🤖 **AI Scanner:** Gemini Vision integration for zero-friction material classification.
-* 📍 **Geospatial Feed:** Haversine distance-based routing for recyclers to find waste.
-* 🏆 **Gamification Engine:** Citizens earn "Green Points" and level up ecologically.
-* 💸 **Dynamic Pricing:** Localized scrap value calculator engine.
-* 🔒 **Role-Based Access:** Isolated Citizen and Recycler dashboard experiences.
-
----
-
-## 🏗️ Architecture
-
-```mermaid
-graph LR
-    Citizen[Citizen App] -->|Image Upload| API[Express API]
-    API -->|Base64 Payload| Gemini[Gemini Pro Vision]
-    Gemini -->|Classification| API
-    API -->|Save Listing| DB[(SQLite)]
-    DB -->|Haversine Query| Recycler[Recycler App]
-```
-
-## 🛠️ Technology Stack
-
-| Layer | Technology | Description |
-| --- | --- | --- |
-| **Frontend** | Next.js (React) | SPA built with responsive Vanilla CSS and interactive charts (Recharts). |
-| **Backend** | Express (Node.js) | REST API using Zod for robust request validation. |
-| **Database** | SQLite | Serverless SQL database (Targeted for PostgreSQL migration in v2). |
-| **AI Vision** | Gemini API | Multi-modal large language model for material recognition. |
-| **Auth** | JWT & Bcrypt | Stateless authentication with Role-Based Access Control. |
-
----
-
-## 📸 Screenshots
-*(Sample images from the v1.0 Pilot Release)*
-
-| Citizen Dashboard | AI Scanner | Recycler Geospatial Feed |
-| :---: | :---: | :---: |
-| <img src="assets/screenshots/dashboard.png" width="250" /> | <img src="assets/screenshots/scanner.png" width="250" /> | <img src="assets/screenshots/feed.png" width="250" /> |
-
----
-
-## 🚀 Installation Guide
-
-### Prerequisites
-- Node.js `v20+`
-- Git
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/your-username/iwis.git
-cd iwis
-```
-
-### 2. Setup the Backend
-```bash
-cd backend
-npm install
-cp .env.example .env
-# Edit .env with your Gemini API Key and JWT Secret
-npm run build
-npm start
-```
-The API will start on `http://localhost:5000`.
-
-### 3. Setup the Frontend
-Open a new terminal window:
-```bash
-cd frontend
-npm install
-cp .env.example .env.local
-npm run build
-npm start
-```
-The application will start on `http://localhost:3000`.
-
----
-
-## 🔐 Environment Variables
-
-| Variable | Location | Required | Description |
-| --- | --- | --- | --- |
-| `GEMINI_API_KEY` | `backend/.env` | ✅ | Primary API key for the Vision AI. |
-| `JWT_SECRET` | `backend/.env` | ✅ | Cryptographic key for signing sessions. |
-| `DB_PATH` | `backend/.env` | ❌ | Defaults to `./iwis.db`. |
-| `NEXT_PUBLIC_API_URL`| `frontend/.env.local` | ❌ | Defaults to `http://localhost:5000/api`. |
-
----
-
-## 📚 Documentation
-We maintain comprehensive documentation in the `/docs` directory:
-- [System Design & Architecture](docs/SYSTEM_DESIGN.md)
-- [API Reference](docs/API_REFERENCE.md)
-- [Database Schema](docs/DATABASE_SCHEMA.md)
-- [Security Model](docs/SECURITY_MODEL.md)
-
----
-
-## 🗺️ Roadmap & Security
-- Check out our transparent [Known Limitations](docs/KNOWN_LIMITATIONS.md) and future [Roadmap](docs/ROADMAP.md).
-- Found a vulnerability? Please review our [Security Policy](docs/SECURITY_MODEL.md) and report it responsibly.
-
----
-
-## 🤝 Contributing
-We welcome contributions from researchers, developers, and municipalities! Please read our [Contributing Guidelines](docs/CONTRIBUTING.md) and [Code of Conduct](docs/CODE_OF_CONDUCT.md) before submitting a Pull Request.
-
----
-
-## 📜 License
-This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
+## See it in Action
 
 <div align="center">
-  <i>Built for a sustainable future. 🌍</i>
+  <img src="./assets/demo.webp" alt="IWIS Demo Walkthrough" width="100%" style="border-radius: 8px;" />
 </div>
+
+## Why IWIS Exists
+
+### The Problem
+Traditional waste management systems in emerging economies operate blindly. Citizens lack the knowledge and incentive to segregate waste, municipalities struggle to optimize collection routes without real-time data, and recyclers face inconsistent supply chains. Valuable recyclable material ends up in landfills, creating severe environmental and public health hazards.
+
+### The Solution
+IWIS (Intelligent Waste Information System) bridges the gap between citizens, recyclers, and municipalities through an AI-powered platform. By turning a smartphone camera into a sophisticated waste classification tool, IWIS removes the friction from recycling. We empower citizens to instantly identify, segregate, and monetize their waste while providing municipalities with the macro-level intelligence needed to transition to a true circular economy.
+
+---
+
+## System Architecture
+
+IWIS is designed for extreme scale, utilizing a decoupled architecture that ensures low latency and high availability.
+
+<div align="center">
+  <img src="./docs/architecture.png" alt="IWIS Architecture Diagram" width="100%" />
+</div>
+
+> Note: View the full [System Design Documentation](./docs/SYSTEM_DESIGN.md) for deeper technical insights.
+
+---
+
+## Feature Highlights
+
+- 🧠 **AI Waste Classification:** Identify waste material type, recyclability, and carbon impact using real-time computer vision (Powered by Google Gemini).
+- 🔄 **Direct Recycler Marketplace:** Connect citizens directly with local, verified scrap dealers for bulk waste pickups.
+- 💰 **Transparent Pricing Engine:** Access localized, real-time scrap market prices to ensure fair compensation.
+- 🤖 **EcoBot Sustainability Assistant:** Get instant answers to complex recycling questions and local regulations.
+- 📊 **Impact Tracking:** Visualize personal and community-level carbon emission reductions in real-time.
+
+---
+
+## Screenshot Gallery
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><img src="./assets/screenshots/03-dashboard.png" width="400" /><br /><b>Citizen Dashboard</b></td>
+      <td align="center"><img src="./assets/screenshots/04-scanner.png" width="400" /><br /><b>AI Scanner</b></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="./assets/screenshots/11-recycler-feed.png" width="400" /><br /><b>Recycler Feed</b></td>
+      <td align="center"><img src="./assets/screenshots/09-ecobot.png" width="400" /><br /><b>EcoBot Assistant</b></td>
+    </tr>
+  </table>
+</div>
+
+---
+
+## Technology Stack
+
+IWIS is built on a modern, robust, and scalable open-source stack.
+
+- **Frontend:** Next.js 14, React 18, Tailwind CSS, Recharts
+- **Backend:** Node.js, Express, SQLite (WAL Mode), JWT Authentication
+- **AI / Machine Learning:** Google Generative AI (Gemini Flash & Embedding models)
+- **Infrastructure:** Render (Backend API), Vercel (Frontend Edge Delivery)
+
+---
+
+## Quick Start
+
+Get IWIS running locally in under 3 minutes.
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/1Bharat007/IWIS-GREEN-v1.2.git
+cd IWIS-GREEN-v1.2
+```
+
+### 2. Configure Environment
+```bash
+# Setup backend environment
+cp backend/.env.example backend/.env
+# Setup frontend environment
+cp frontend/.env.example frontend/.env.local
+```
+
+### 3. Start the Platform
+```bash
+# Terminal 1: Start Backend API
+cd backend
+npm install
+npm run dev
+
+# Terminal 2: Start Frontend Application
+cd frontend
+npm install
+npm run dev
+```
+Visit `http://localhost:3000` to view the application.
+
+### 4. Demo Dataset (Optional)
+To instantly populate your local environment with realistic test data:
+```bash
+cd backend
+npx ts-node scripts/seed-demo.ts
+```
+
+---
+
+## Documentation
+
+Comprehensive documentation is available in the [`/docs`](./docs/) directory.
+
+- 📚 [API Reference](./docs/API_REFERENCE.md)
+- 🗄️ [Database Schema](./docs/DATABASE_SCHEMA.md)
+- 🏗️ [System Design](./docs/SYSTEM_DESIGN.md)
+- 🔒 [Security Model](./docs/SECURITY_MODEL.md)
+
+---
+
+## Roadmap
+
+Curious about what we're building next? Check out our [Implementation Roadmap](./docs/ROADMAP.md) for details on upcoming features, PostgreSQL migrations, and IoT integrations.
+
+---
+
+## Contributing
+
+We believe in the power of open-source to solve global challenges. Whether you're a developer, designer, or sustainability advocate, we welcome your contributions!
+
+Please review our [Contributing Guidelines](./CONTRIBUTING.md) and [Code of Conduct](./CODE_OF_CONDUCT.md) before submitting a Pull Request.
+
+---
+
+## License
+
+This project is licensed under the [MIT License](./LICENSE). 
+
+<p align="center">
+  Built with ❤️ for a cleaner planet.
+</p>

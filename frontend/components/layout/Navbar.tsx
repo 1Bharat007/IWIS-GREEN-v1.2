@@ -10,6 +10,8 @@ import {
   BotIcon, SettingsIcon, LogOutIcon, UserIcon, SunIcon, MoonIcon, BarChartIcon, InfoIcon, BellIcon
 } from "@/components/ui/Icons";
 import { apiFetch } from "@/lib/api";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 
 function getRoleFromToken(): string | null {
   try {
@@ -66,6 +68,9 @@ export default function Navbar() {
     clearToken();
     localStorage.removeItem("iwis-user");
     localStorage.removeItem("iwis-impact");
+    if (auth) {
+      signOut(auth).catch(() => {});
+    }
     setUserOpen(false);
     router.push("/login");
   };

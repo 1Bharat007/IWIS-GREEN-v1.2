@@ -14,6 +14,8 @@ import {
   InfoIcon,
   LeafIcon
 } from "@/components/ui/Icons";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
 import { clearToken } from "@/lib/session";
 
 export default function ProfilePage() {
@@ -35,7 +37,14 @@ export default function ProfilePage() {
   }, []);
 
   const handleLogout = () => {
+    try {
+      if (auth) {
+        signOut(auth).catch(() => {});
+      }
+    } catch { /* ignore */ }
     clearToken();
+    localStorage.removeItem("iwis-user");
+    localStorage.removeItem("iwis-impact");
     router.push("/login");
   };
 

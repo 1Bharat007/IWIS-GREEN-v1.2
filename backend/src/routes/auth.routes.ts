@@ -1,6 +1,6 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
-import { signup, login, forgotPassword, resetPassword, getMe, updateProfile, sendOtp, verifyOtp } from "../controllers/auth.controller";
+import { signup, login, firebaseLogin, forgotPassword, resetPassword, getMe, updateProfile, sendOtp, verifyOtp } from "../controllers/auth.controller";
 import { protect } from "../middleware/auth.middleware";
 
 const authLimiter = rateLimit({
@@ -19,6 +19,7 @@ const router = Router();
 
 router.post("/signup", authLimiter, signup);
 router.post("/login", authLimiter, login);
+router.post("/firebase-login", authLimiter, firebaseLogin);
 router.post("/send-otp", otpIpLimiter, sendOtp);
 router.post("/verify-otp", authLimiter, verifyOtp);
 router.post("/forgot-password", authLimiter, forgotPassword);

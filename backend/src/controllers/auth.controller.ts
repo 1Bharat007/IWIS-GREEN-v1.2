@@ -5,6 +5,7 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 import { z } from "zod";
 import { getDB } from "../db";
+import { getFirebaseAuth } from "../utils/firebase.util";
 
 const JWT_SECRET = process.env.JWT_SECRET || "iwis_super_secret_key";
 
@@ -123,7 +124,16 @@ export const sendOtp = async (req: Request, res: Response) => {
 
     // In production, integrate MSG91 or Twilio here. For now, log to console.
     if (process.env.NODE_ENV !== "production") {
-      console.log(`\n\n[DEV MOCK SMS] OTP for ${phone} is: ${otp}\n\n`);
+      console.log(`
+==========================================
+IWIS DEVELOPMENT OTP
+
+Phone : ${phone}
+OTP   : ${otp}
+Valid : 5 minutes
+
+==========================================
+`);
     }
 
     res.json({ message: "OTP sent successfully" });
@@ -359,5 +369,75 @@ export const updateProfile = async (req: any, res: Response) => {
   } catch (err) {
     console.error("[updateProfile] error:", err);
     res.status(500).json({ message: "Failed to update profile." });
+  }
+};
+
+// ─── FIREBASE LOGIN ──────────────────────────────────────────────────────────
+export const firebaseLogin = async (req: Request, res: Response) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) return res.status(400).json({ message: "Firebase ID token required" });
+
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      return res.status(500).json({ message: "Firebase Auth is not configured on the server." });
+    }
+
+    const decodedToken = await auth.verifyIdToken(idToken);
+    const phone = decodedToken.phone_number;
+    const email = decodedToken.email;
+    const name = decodedToken.name;
+
+    if (!phone && !email) {
+      return res.status(400).json({ message: "No phone number or email found in Firebase token" });
+    }
+
+    const db = await getDB();
+    let user;
+
+    if (phone) {
+      user = await db.get("SELECT * FROM users WHERE phone = ?", phone);
+    } 
+    if (!user && email) {
+      user = await db.get("SELECT * FROM users WHERE email = ?", email);
+    }
+
+    if (user) {
+      let updates = [];
+      let values = [];
+      if (phone && !user.phoneVerified) {
+        updates.push("phoneVerified = 1");
+      }
+      // If user logged in with Google (email) but their email wasn't in DB, we could update it, but they are matched by email or phone.
+      if (email && !user.email) {
+        updates.push("email = ?");
+        values.push(email);
+      }
+      
+      if (updates.length > 0) {
+        values.push(user.id);
+        await db.run(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`, values);
+      }
+    } else {
+      // Register new user seamlessly
+      const id = crypto.randomUUID();
+      const role = "citizen";
+      const createdAt = new Date().toISOString();
+      const displayName = name || (phone ? "Citizen " + phone.slice(-4) : "Citizen"); 
+      const hashed = await bcrypt.hash(crypto.randomBytes(16).toString("hex"), 10);
+      const phoneVerified = phone ? 1 : 0;
+
+      await db.run(
+        "INSERT INTO users (id, phone, email, password, role, displayName, phoneVerified, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [id, phone || null, email || null, hashed, role, displayName, phoneVerified, createdAt]
+      );
+      user = { id, role, phone, email };
+    }
+
+    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
+    res.json({ token, role: user.role, requiresOnboarding: user.role === 'recycler' && !user.isApproved });
+  } catch (err) {
+    console.error("[firebaseLogin] error:", err);
+    res.status(401).json({ message: "Invalid Firebase token or verification failed" });
   }
 };
