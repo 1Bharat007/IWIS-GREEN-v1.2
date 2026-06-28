@@ -117,15 +117,7 @@ function LoginContent() {
       setTimer(60);
     } catch (err: any) {
       console.error(err);
-      if (err.code === "auth/too-many-requests") {
-        setError("Too many requests. Please try again later.");
-      } else if (err.code === "auth/invalid-phone-number") {
-        setError("Invalid phone number format. Use country code (e.g. +91).");
-      } else if (err.message?.includes("network")) {
-        setError("Network error. Please check your connection.");
-      } else {
-        setError("Failed to send OTP. Please try again.");
-      }
+      setError(err.code + " : " + err.message);
       if ((window as any).recaptchaVerifier) {
         (window as any).recaptchaVerifier.clear();
         (window as any).recaptchaVerifier = null;
@@ -160,14 +152,7 @@ function LoginContent() {
       }
     } catch (err: any) {
       console.error(err);
-      if (err.code === "auth/invalid-verification-code") {
-        setError("Invalid OTP. Please check the code and try again.");
-      } else if (err.code === "auth/code-expired") {
-        setError("OTP has expired. Please request a new one.");
-        setStep("input");
-      } else {
-        setError(err.backendMessage || "Verification failed. Please try again.");
-      }
+      setError(err.code + " : " + err.message);
     } finally {
       setLoading(false);
     }
