@@ -13,6 +13,7 @@ export default function ConfirmPickupPage() {
 
   const [listing, setListing] = useState<any>(null);
   const [actualWeight, setActualWeight] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("cash");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
@@ -32,7 +33,10 @@ export default function ConfirmPickupPage() {
       setError("");
       await apiFetch(`/listings/${id}/confirm`, {
         method: "POST",
-        body: JSON.stringify({ actualWeightKg: parseFloat(actualWeight) }),
+        body: JSON.stringify({ 
+          actualWeightKg: parseFloat(actualWeight),
+          paymentMethod 
+        }),
       });
       setSuccess(true);
     } catch (err: any) {
@@ -120,6 +124,22 @@ export default function ConfirmPickupPage() {
                 <span className="text-lg font-bold text-[var(--accent-text)]">₹{(parseFloat(actualWeight) * 10).toFixed(2)}</span>
               </div>
             )}
+            
+            <div className="pt-2">
+              <label className="block text-sm font-medium text-[var(--text-primary)] mb-3">
+                Payment Method
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'cash' ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent-text)] font-medium' : 'border-[var(--border)] bg-[var(--surface-raised)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]'}`}>
+                  <input type="radio" name="payment" value="cash" checked={paymentMethod === 'cash'} onChange={(e) => setPaymentMethod(e.target.value)} className="hidden" />
+                  💵 Paid Cash
+                </label>
+                <label className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'upi' ? 'border-[var(--accent)] bg-[var(--accent-subtle)] text-[var(--accent-text)] font-medium' : 'border-[var(--border)] bg-[var(--surface-raised)] text-[var(--text-secondary)] hover:border-[var(--border-strong)]'}`}>
+                  <input type="radio" name="payment" value="upi" checked={paymentMethod === 'upi'} onChange={(e) => setPaymentMethod(e.target.value)} className="hidden" />
+                  📱 Paid via UPI
+                </label>
+              </div>
+            </div>
           </div>
 
           <button

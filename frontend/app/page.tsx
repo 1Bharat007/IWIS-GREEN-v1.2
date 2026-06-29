@@ -1,7 +1,12 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { getToken } from "@/lib/session";
+import { apiFetch } from "@/lib/api";
 import {
   ScanIcon, ShoppingIcon, BotIcon,
-  ArrowRightIcon, CheckIcon
+  ArrowRightIcon, CheckIcon, LayoutIcon, HistoryIcon
 } from "@/components/ui/Icons";
 
 const FEATURES = [
@@ -41,6 +46,28 @@ const STEPS = [
 ];
 
 export default function Home() {
+  const [authed, setAuthed] = useState(false);
+  const [city, setCity] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const token = getToken();
+    setAuthed(!!token);
+    
+    if (token) {
+      apiFetch("/auth/me")
+        .then(data => {
+          if (data && data.city) {
+            setCity(data.city);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
   return (
     <div className="animate-fadeIn">
 
@@ -48,8 +75,17 @@ export default function Home() {
       <section className="pt-16 pb-20 border-b border-[var(--border)]">
         <div className="max-w-3xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--accent-border)] bg-[var(--accent-subtle)] text-xs font-semibold text-[var(--accent-text)] mb-6">
-            <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
-            Live in Jammu
+            {city ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
+                Live in {city}
+              </>
+            ) : (
+              <>
+                <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                Available across India
+              </>
+            )}
           </div>
 
           <h1 className="text-4xl sm:text-6xl font-bold text-[var(--text-primary)] leading-tight tracking-tight mb-6">
@@ -63,19 +99,47 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-            <Link
-              href="/scan"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[var(--text-primary)] text-[var(--bg)] rounded-xl text-[15px] font-semibold shadow-md hover:opacity-90 hover:scale-[1.02] transition-all duration-200"
-            >
-              Scan & Sell Now
-              <ScanIcon size={16} />
-            </Link>
-            <Link
-              href="/signup"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--text-primary)] rounded-xl text-[15px] font-medium shadow-sm hover:bg-[var(--surface-raised)] transition-all duration-200"
-            >
-              Create Account
-            </Link>
+            {!loading && authed ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[var(--text-primary)] text-[var(--bg)] rounded-xl text-[15px] font-semibold shadow-md hover:opacity-90 hover:scale-[1.02] transition-all duration-200"
+                >
+                  Go to Dashboard
+                  <LayoutIcon size={16} />
+                </Link>
+                <Link
+                  href="/scan"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--text-primary)] rounded-xl text-[15px] font-medium shadow-sm hover:bg-[var(--surface-raised)] transition-all duration-200"
+                >
+                  Scan Waste
+                  <ScanIcon size={16} />
+                </Link>
+                <Link
+                  href="/sell/history"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--text-primary)] rounded-xl text-[15px] font-medium shadow-sm hover:bg-[var(--surface-raised)] transition-all duration-200"
+                >
+                  My Listings
+                  <HistoryIcon size={16} />
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/scan"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-[var(--text-primary)] text-[var(--bg)] rounded-xl text-[15px] font-semibold shadow-md hover:opacity-90 hover:scale-[1.02] transition-all duration-200"
+                >
+                  Scan & Sell Now
+                  <ScanIcon size={16} />
+                </Link>
+                <Link
+                  href="/signup"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 border border-[var(--border-strong)] bg-[var(--surface)] text-[var(--text-primary)] rounded-xl text-[15px] font-medium shadow-sm hover:bg-[var(--surface-raised)] transition-all duration-200"
+                >
+                  Create Account
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -123,16 +187,18 @@ export default function Home() {
       </section>
 
       {/* ── Bottom CTA ───────────────────────────────────────── */}
-      <section className="py-16 mt-8 rounded-3xl bg-[var(--text-primary)] text-center text-[var(--bg)] mb-20">
-        <h2 className="text-3xl font-bold mb-6">Ready to start earning?</h2>
-        <Link
-          href="/signup"
-          className="inline-flex items-center gap-2 px-8 py-4 bg-[var(--bg)] text-[var(--text-primary)] rounded-xl text-[15px] font-bold hover:scale-105 transition-transform shadow-lg"
-        >
-          Create a free account
-          <ArrowRightIcon size={16} />
-        </Link>
-      </section>
+      {!loading && !authed && (
+        <section className="py-16 mt-8 rounded-3xl bg-[var(--text-primary)] text-center text-[var(--bg)] mb-20">
+          <h2 className="text-3xl font-bold mb-6">Ready to start earning?</h2>
+          <Link
+            href="/signup"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-[var(--bg)] text-[var(--text-primary)] rounded-xl text-[15px] font-bold hover:scale-105 transition-transform shadow-lg"
+          >
+            Create a free account
+            <ArrowRightIcon size={16} />
+          </Link>
+        </section>
+      )}
     </div>
   );
 }

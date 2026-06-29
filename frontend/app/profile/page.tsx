@@ -92,7 +92,7 @@ export default function ProfilePage() {
                 )}
               </h1>
               <p className="text-[var(--text-secondary)] text-sm mb-3">
-                {profile.email} • {profile.phone || "+91 XXXXXXXXXX"}
+                {profile.email} • {profile.phone || "+91 XXXXXXXXXX"} • {profile.city || "Available across India"}
               </p>
               
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
@@ -169,15 +169,15 @@ export default function ProfilePage() {
               </div>
             </Link>
 
-            <button className="w-full flex items-center gap-4 p-4 hover:bg-[var(--surface-raised)] transition-colors border-b border-[var(--border)] group text-left">
+            <Link href="/chat" className="w-full flex items-center gap-4 p-4 hover:bg-[var(--surface-raised)] transition-colors border-b border-[var(--border)] group text-left">
               <div className="w-10 h-10 rounded-full bg-[var(--surface-raised)] group-hover:bg-[var(--border)] flex items-center justify-center text-[var(--text-secondary)] transition-colors">
                 <InfoIcon size={18} />
               </div>
               <div className="flex-1">
                 <h3 className="text-sm font-medium text-[var(--text-primary)]">Help & Support</h3>
-                <p className="text-xs text-[var(--text-secondary)]">Contact operations team</p>
+                <p className="text-xs text-[var(--text-secondary)]">Contact operations team or EcoBot</p>
               </div>
-            </button>
+            </Link>
 
             <button 
               onClick={handleLogout}

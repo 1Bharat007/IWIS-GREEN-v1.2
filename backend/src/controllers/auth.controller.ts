@@ -316,7 +316,11 @@ export const getMe = async (req: any, res: Response) => {
   try {
     const db = await getDB();
     const user = await db.get(
-      "SELECT id, email, phone, displayName, role, totalScans, totalCO2, streak, tier, greenPoints, createdAt, isApproved, totalEarnings FROM users WHERE id = ?",
+      `SELECT u.id, u.email, u.phone, u.displayName, u.role, u.totalScans, u.totalCO2, u.streak, u.tier, 
+              u.greenPoints, u.createdAt, u.totalEarnings, u.city, r.isApproved 
+       FROM users u 
+       LEFT JOIN recycler_profiles r ON u.id = r.userId 
+       WHERE u.id = ?`,
       req.user.id
     );
     if (!user) return res.status(404).json({ message: "User not found" });

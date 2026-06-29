@@ -239,7 +239,7 @@ export const schedulePickup = async (req: any, res: Response) => {
 export const confirmPickup = async (req: any, res: Response) => {
   try {
     const { id } = req.params;
-    const { actualWeightKg, pickupPhotoUrl } = req.body;
+    const { actualWeightKg, pickupPhotoUrl, paymentMethod = 'cash' } = req.body;
     const weight = parseFloat(actualWeightKg);
     if (isNaN(weight) || weight <= 0) {
       return res.status(400).json({ message: "Invalid weight. Must be greater than 0." });
@@ -276,7 +276,7 @@ export const confirmPickup = async (req: any, res: Response) => {
         id, listingId, citizenId, recyclerId, material, finalWeightKg, pricePerKg, 
         amount, platformFee, citizenEarnings, paymentMethod, paymentStatus, status, createdAt
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [txId, id, listing.citizenId, req.user.id, listing.materialType, weight, pricePerKg, totalAmount, platformFee, citizenEarnings, 'cash', 'pending', 'completed', now]
+      [txId, id, listing.citizenId, req.user.id, listing.materialType, weight, pricePerKg, totalAmount, platformFee, citizenEarnings, paymentMethod, 'completed', 'completed', now]
     );
 
     await db.run(
@@ -293,7 +293,7 @@ export const confirmPickup = async (req: any, res: Response) => {
     await createNotification(
       listing.citizenId,
       "Payment Recorded",
-      `A cash payment of ₹${citizenEarnings.toFixed(2)} was recorded for your listing.`
+      `A ${paymentMethod === 'upi' ? 'UPI' : 'cash'} payment of ₹${citizenEarnings.toFixed(2)} was recorded for your listing.`
     );
 
     res.json({ message: "Pickup confirmed and transaction generated." });

@@ -272,7 +272,7 @@ export default function Navbar() {
                         EcoBot
                       </Link>
                       <Link
-                        href="#"
+                        href="/chat"
                         onClick={() => setUserOpen(false)}
                         className="flex items-center gap-2.5 px-3 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors"
                       >
@@ -365,7 +365,7 @@ export default function Navbar() {
                   <Link href="/chat" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] transition-colors">
                     <BotIcon size={14} /> EcoBot
                   </Link>
-                  <Link href="#" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] transition-colors">
+                  <Link href="/chat" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] transition-colors">
                     <InfoIcon size={14} /> Help
                   </Link>
                   <button onClick={handleLogout} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-[var(--destructive)] hover:bg-[var(--surface-raised)] transition-colors">
