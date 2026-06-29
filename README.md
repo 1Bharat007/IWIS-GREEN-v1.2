@@ -36,7 +36,7 @@
 ## See it in Action
 
 <div align="center">
-  <img src="./assets/demo.webp" alt="IWIS Demo Walkthrough" width="100%" style="border-radius: 8px;" />
+  <video src="https://raw.githubusercontent.com/1Bharat007/IWIS-GREEN-v1.2/main/assets/demo.webm" width="100%" style="border-radius: 8px;" autoplay loop muted playsinline></video>
 </div>
 
 ## Why IWIS Exists
