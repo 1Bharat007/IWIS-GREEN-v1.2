@@ -1,133 +1,173 @@
-const puppeteer = require('puppeteer-core');
-const fs = require('fs');
+const { chromium, devices } = require('playwright');
 const path = require('path');
-
-const SCREENSHOT_DIR = path.join(__dirname, 'assets', 'screenshots');
-
-if (!fs.existsSync(SCREENSHOT_DIR)) {
-  fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
-}
+const fs = require('fs');
 
 async function run() {
-  console.log("Launching Puppeteer...");
-  const browser = await puppeteer.launch({
-    headless: "new",
-    executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  const screenshotsDir = path.join(__dirname, '../assets/screenshots');
+  const assetsDir = path.join(__dirname, '../assets');
+
+  // Ensure directories exist
+  if (!fs.existsSync(screenshotsDir)) fs.mkdirSync(screenshotsDir, { recursive: true });
+
+  console.log('Starting Playwright...');
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 }
   });
-
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
   
-  // Helper for taking screenshots
-  const takeScreenshot = async (name) => {
-    await new Promise(r => setTimeout(r, 1500)); // wait for animations
-    const filePath = path.join(SCREENSHOT_DIR, `${name}.png`);
-    await page.screenshot({ path: filePath });
-    console.log(`📸 Saved ${name}.png`);
-  };
+  const page = await context.newPage();
+  
+  console.log('Capturing Landing Page...');
+  await page.goto('http://localhost:3000');
+  await page.waitForTimeout(2000); // Wait for animations
+  await page.screenshot({ path: path.join(screenshotsDir, '01-landing.png') });
 
-  try {
-    // 1. Landing Page
-    console.log("Navigating to Landing...");
-    await page.goto('http://localhost:3000/', { waitUntil: 'networkidle0' });
-    await takeScreenshot('01-landing');
+  console.log('Capturing Login Page...');
+  await page.goto('http://localhost:3000/login');
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: path.join(screenshotsDir, '02-login.png') });
 
-    // 2. Login
-    console.log("Navigating to Login...");
-    await page.goto('http://localhost:3000/login', { waitUntil: 'networkidle0' });
-    await takeScreenshot('02-login');
+  console.log('Logging in as Citizen...');
+  await page.click('text=Continue with Email');
+  await page.fill('input[type="email"]', 'demo@iwis.app');
+  await page.fill('input[type="password"]', 'password123');
+  await page.click('button[type="submit"]');
+  await page.waitForTimeout(2000);
+  await page.screenshot({ path: path.join(screenshotsDir, 'DEBUG_login_error.png') });
+  
+  await page.waitForURL('**/dashboard');
+  await page.waitForTimeout(2000); // Wait for data to load
+  console.log('Capturing Dashboard...');
+  await page.screenshot({ path: path.join(screenshotsDir, '03-dashboard.png') });
 
-    // Login as Citizen
-    console.log("Logging in as Citizen...");
-    await page.type('#identifier', 'citizen@demo.com');
-    await page.type('#password', 'demo123');
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: 'networkidle0' }),
-      page.click('button[type="submit"]')
-    ]);
-    
-    // 3. Dashboard
-    console.log("Capturing Dashboard...");
-    await takeScreenshot('03-dashboard');
+  console.log('Capturing Scanner...');
+  await page.goto('http://localhost:3000/scan');
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(screenshotsDir, '04-scanner.png') });
 
-    // 4. Scanner
-    console.log("Capturing Scanner...");
-    await page.goto('http://localhost:3000/scan', { waitUntil: 'networkidle0' });
-    await takeScreenshot('04-scanner');
+  console.log('Capturing Sell Waste...');
+  await page.goto('http://localhost:3000/sell');
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(screenshotsDir, '05-sell-waste.png') });
 
-    // 5. Sell Waste
-    console.log("Capturing Sell Waste...");
-    await page.goto('http://localhost:3000/sell', { waitUntil: 'networkidle0' });
-    await takeScreenshot('05-sell-waste');
+  console.log('Capturing Earnings...');
+  await page.goto('http://localhost:3000/earnings');
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(screenshotsDir, '06-earnings.png') });
 
-    // 6. Earnings
-    console.log("Capturing Earnings...");
-    await page.goto('http://localhost:3000/earnings', { waitUntil: 'networkidle0' });
-    await takeScreenshot('06-earnings');
+  console.log('Capturing Profile...');
+  await page.goto('http://localhost:3000/profile');
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(screenshotsDir, '07-profile.png') });
 
-    // 7. Profile
-    console.log("Capturing Profile...");
-    await page.goto('http://localhost:3000/profile', { waitUntil: 'networkidle0' });
-    await takeScreenshot('07-profile');
+  console.log('Capturing Settings...');
+  await page.goto('http://localhost:3000/settings');
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: path.join(screenshotsDir, '08-settings.png') });
 
-    // 8. Settings
-    console.log("Capturing Settings...");
-    await page.goto('http://localhost:3000/settings', { waitUntil: 'networkidle0' });
-    await takeScreenshot('08-settings');
+  console.log('Capturing EcoBot...');
+  await page.goto('http://localhost:3000/chat');
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(screenshotsDir, '09-ecobot.png') });
 
-    // 9. EcoBot
-    console.log("Capturing EcoBot...");
-    await page.goto('http://localhost:3000/chat', { waitUntil: 'networkidle0' });
-    await takeScreenshot('09-ecobot');
+  await context.close();
 
-    // 10. Mobile View (Dashboard)
-    console.log("Capturing Mobile View...");
-    await page.setViewport({ width: 375, height: 812, deviceScaleFactor: 2, isMobile: true });
-    await page.goto('http://localhost:3000/dashboard', { waitUntil: 'networkidle0' });
-    await takeScreenshot('10-mobile-dashboard');
+  // Mobile Context
+  console.log('Capturing Mobile Dashboard...');
+  const mobileContext = await browser.newContext({
+    ...devices['iPhone 13']
+  });
+  const mobilePage = await mobileContext.newPage();
+  await mobilePage.goto('http://localhost:3000/login');
+  await mobilePage.click('text=Continue with Email');
+  await mobilePage.fill('input[type="email"]', 'demo@iwis.app');
+  await mobilePage.fill('input[type="password"]', 'password123');
+  await mobilePage.click('button[type="submit"]');
+  await mobilePage.waitForURL('**/dashboard');
+  await mobilePage.waitForTimeout(2000);
+  await mobilePage.screenshot({ path: path.join(screenshotsDir, '10-mobile-dashboard.png') });
+  await mobileContext.close();
 
-    // Reset viewport and logout
-    await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 2 });
-    
-    // Clear localStorage to log out
-    await page.evaluate(() => {
-      localStorage.clear();
-      sessionStorage.clear();
-    });
+  // Recycler Context
+  console.log('Logging in as Recycler...');
+  const recyclerContext = await browser.newContext({
+    viewport: { width: 1280, height: 800 }
+  });
+  const recyclerPage = await recyclerContext.newPage();
+  await recyclerPage.goto('http://localhost:3000/login');
+  await recyclerPage.click('text=Continue with Email');
+  await recyclerPage.fill('input[type="email"]', 'recycler@iwis.app');
+  await recyclerPage.fill('input[type="password"]', 'password123');
+  await recyclerPage.click('button[type="submit"]');
+  await recyclerPage.waitForURL('**/recycler/feed');
+  await recyclerPage.waitForTimeout(2000);
+  
+  console.log('Capturing Recycler Feed...');
+  await recyclerPage.screenshot({ path: path.join(screenshotsDir, '11-recycler-feed.png') });
 
-    // 11. Recycler Login
-    console.log("Logging in as Recycler...");
-    await page.goto('http://localhost:3000/login', { waitUntil: 'networkidle0' });
-    await page.type('#identifier', 'recycler@demo.com');
-    await page.type('#password', 'demo123');
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: 'networkidle0' }),
-      page.click('button[type="submit"]')
-    ]);
-
-    // 12. Recycler Feed
-    console.log("Capturing Recycler Feed...");
-    await page.goto('http://localhost:3000/recycler', { waitUntil: 'networkidle0' });
-    await takeScreenshot('11-recycler-feed');
-
-    // 13. Pickup Workflow (mock by clicking the first listing if it exists)
-    console.log("Capturing Pickup Workflow...");
-    try {
-      // Try clicking a listing card or Details button
-      await page.click('.card, button:contains("Details"), button:contains("View")');
-      await takeScreenshot('12-pickup-workflow');
-    } catch (e) {
-      console.log("Could not find a listing to click for Pickup Workflow. Capturing default state.");
-      await takeScreenshot('12-pickup-workflow');
+  console.log('Capturing Pickup Workflow...');
+  // Find a pickup button or navigate to one
+  const pickupButtons = await recyclerPage.$$('text=Accept Pickup');
+  if (pickupButtons.length > 0) {
+    await pickupButtons[0].click();
+    await recyclerPage.waitForTimeout(1500);
+  } else {
+    // If no direct button, just view the first listing
+    const viewButtons = await recyclerPage.$$('text=View Details');
+    if (viewButtons.length > 0) {
+      await viewButtons[0].click();
+      await recyclerPage.waitForTimeout(1500);
     }
-
-  } catch (err) {
-    console.error("Error during screenshot capture:", err);
-  } finally {
-    await browser.close();
-    console.log("✅ Done capturing screenshots.");
   }
+  await recyclerPage.screenshot({ path: path.join(screenshotsDir, '12-pickup-workflow.png') });
+  await recyclerContext.close();
+
+  // Recording Demo Video
+  console.log('Recording Walkthrough Video...');
+  const videoContext = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    recordVideo: {
+      dir: assetsDir,
+      size: { width: 1280, height: 800 }
+    }
+  });
+  const videoPage = await videoContext.newPage();
+  await videoPage.goto('http://localhost:3000');
+  await videoPage.waitForTimeout(1500);
+  await videoPage.goto('http://localhost:3000/login');
+  await videoPage.waitForTimeout(1000);
+  await videoPage.click('text=Continue with Email');
+  await videoPage.fill('input[type="email"]', 'demo@iwis.app');
+  await videoPage.fill('input[type="password"]', 'password123');
+  await videoPage.click('button[type="submit"]');
+  await videoPage.waitForURL('**/dashboard');
+  await videoPage.waitForTimeout(2000);
+  
+  // Quick interaction for demo
+  await videoPage.goto('http://localhost:3000/scan');
+  await videoPage.waitForTimeout(2000);
+  await videoPage.goto('http://localhost:3000/sell');
+  await videoPage.waitForTimeout(2000);
+  
+  await videoContext.close();
+  
+  // Find the generated webm and rename it to demo.webm
+  const files = fs.readdirSync(assetsDir);
+  const webmFile = files.find(f => f.endsWith('.webm') && f !== 'demo.webm');
+  if (webmFile) {
+    if (fs.existsSync(path.join(assetsDir, 'demo.webm'))) {
+      fs.unlinkSync(path.join(assetsDir, 'demo.webm'));
+    }
+    fs.renameSync(path.join(assetsDir, webmFile), path.join(assetsDir, 'demo.webm'));
+  }
+
+  // Remove placeholder demo.webp if it exists
+  if (fs.existsSync(path.join(assetsDir, 'demo.webp'))) {
+    fs.unlinkSync(path.join(assetsDir, 'demo.webp'));
+  }
+
+  await browser.close();
+  console.log('✅ Screenshots and Demo generation complete!');
 }
 
-run();
+run().catch(console.error);

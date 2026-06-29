@@ -54,10 +54,45 @@ IWIS (Intelligent Waste Information System) bridges the gap between citizens, re
 IWIS is designed for extreme scale, utilizing a decoupled architecture that ensures low latency and high availability.
 
 <div align="center">
-  <img src="./docs/architecture.png" alt="IWIS Architecture Diagram" width="100%" />
+  
+```mermaid
+graph TD
+    subgraph Client ["Frontend — Next.js 16"]
+        UI["React UI (Pages & Components)"]
+        State["Client State (Hooks, Context, localStorage)"]
+        API_Client["API Fetch Layer (JWT Interceptor)"]
+        UI --> State --> API_Client
+    end
+
+    subgraph Server ["Backend — Express 5"]
+        Router["API Routes"]
+        Auth["Auth Middleware (JWT + RBAC)"]
+        Controllers["Controllers"]
+        Services["Services Layer"]
+        AI["AI Router"]
+        RAG["Vector DB"]
+        DB[("SQLite (iwis.db)")]
+
+        API_Client -- "HTTPS / JSON" --> Router
+        Router --> Auth --> Controllers
+        Controllers --> Services
+        Services --> DB
+        Controllers <--> AI
+        AI <--> RAG
+    end
+
+    subgraph External ["External Services"]
+        GeminiVision["Gemini Pro Vision"]
+        GeminiEmbed["Gemini Embedding 2"]
+    end
+
+    AI --> GeminiVision
+    RAG --> GeminiEmbed
+```
+
 </div>
 
-> Note: View the full [System Design Documentation](./docs/SYSTEM_DESIGN.md) for deeper technical insights.
+> Note: View the full [System Design Documentation](./docs/Architecture.md) for deeper technical insights.
 
 ---
 
@@ -144,16 +179,16 @@ npx ts-node scripts/seed-demo.ts
 
 Comprehensive documentation is available in the [`/docs`](./docs/) directory.
 
-- 📚 [API Reference](./docs/API_REFERENCE.md)
-- 🗄️ [Database Schema](./docs/DATABASE_SCHEMA.md)
-- 🏗️ [System Design](./docs/SYSTEM_DESIGN.md)
-- 🔒 [Security Model](./docs/SECURITY_MODEL.md)
+- 📚 [API Reference](./docs/API.md)
+- 🗄️ [Database Schema](./docs/Database.md)
+- 🏗️ [System Design](./docs/Architecture.md)
+- 🔒 [Security Model](./docs/Security.md)
 
 ---
 
 ## Roadmap
 
-Curious about what we're building next? Check out our [Implementation Roadmap](./docs/ROADMAP.md) for details on upcoming features, PostgreSQL migrations, and IoT integrations.
+Curious about what we're building next? Check out our [Implementation Roadmap](./docs/Roadmap.md) for details on upcoming features, PostgreSQL migrations, and IoT integrations.
 
 ---
 

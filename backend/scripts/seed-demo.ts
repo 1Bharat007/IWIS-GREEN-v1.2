@@ -15,28 +15,32 @@ async function seed() {
   // 1. Create Demo Users
   const citizenId = "demo-citizen-001";
   const recyclerId = "demo-recycler-001";
-  const passwordHash = await bcrypt.hash("demo123", 10);
+  const passwordHash = await bcrypt.hash("password123", 10);
   const now = new Date().toISOString();
 
-  console.log("👤 Creating demo users...");
+  console.log("👤 Creating/Updating demo users...");
+  // Try to update existing users first to avoid foreign key constraints
+  await db.run(`UPDATE users SET email = ?, password = ?, phone = ? WHERE id = ?`, ["demo@iwis.app", passwordHash, "+919596310276", citizenId]);
+  await db.run(`UPDATE users SET email = ?, password = ?, phone = ? WHERE id = ?`, ["recycler@iwis.app", passwordHash, "+919596310277", recyclerId]);
+  
   await db.run(`INSERT OR IGNORE INTO users 
-    (id, email, password, role, displayName, phone, greenPoints, tier, totalScans, totalCO2, createdAt) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-    [citizenId, "citizen@demo.com", passwordHash, "citizen", "Aryan Sharma", "+919999999991", 450, "Sprout", 12, 14.5, now]
+    (id, email, password, role, displayName, phone, city, greenPoints, tier, totalScans, totalCO2, totalEarnings, createdAt) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+    [citizenId, "demo@iwis.app", passwordHash, "citizen", "Aryan Sharma", "+919596310276", "Delhi", 450, "Sprout", 12, 14.5, 450.50, now]
   );
 
   await db.run(`INSERT OR IGNORE INTO users 
-    (id, email, password, role, displayName, phone, totalEarnings, createdAt) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
-    [recyclerId, "recycler@demo.com", passwordHash, "recycler", "Green Earth Scrap", "+919999999992", 4520.50, now]
+    (id, email, password, role, displayName, phone, city, totalEarnings, createdAt) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+    [recyclerId, "recycler@iwis.app", passwordHash, "recycler", "Green Earth Scrap", "+919596310277", "Delhi", 4520.50, now]
   );
 
   // 2. Create Recycler Profile
   console.log("🏢 Creating recycler profile...");
-  await db.run(`INSERT OR IGNORE INTO recycler_profiles 
-    (id, userId, businessName, acceptedMaterials, serviceRadiusKm, rating, totalPickups, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ["profile-001", recyclerId, "Green Earth Scrap Ltd", "Plastic, Metal, E-Waste", 15, 4.8, 124, now]
+  await db.run(`INSERT OR REPLACE INTO recycler_profiles 
+    (id, userId, businessName, acceptedMaterials, serviceRadiusKm, rating, totalPickups, isApproved, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ["profile-001", recyclerId, "Green Earth Scrap Ltd", "Plastic, Metal, E-Waste", 15, 4.8, 124, 1, now]
   );
 
   // 3. Create Scan Batches (AI History)
@@ -92,8 +96,8 @@ async function seed() {
   );
 
   console.log("✅ Demo dataset seeded successfully!");
-  console.log("Demo Citizen: citizen@demo.com / demo123");
-  console.log("Demo Recycler: recycler@demo.com / demo123");
+  console.log("Demo Citizen: demo@iwis.app / password123");
+  console.log("Demo Recycler: recycler@iwis.app / password123");
 }
 
 seed().catch(console.error);

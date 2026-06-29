@@ -196,7 +196,13 @@ export const login = async (req: Request, res: Response) => {
 
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
 
-    res.json({ token, role: user.role, requiresOnboarding: user.role === 'recycler' && !user.isApproved });
+    let isApproved = 0;
+    if (user.role === 'recycler') {
+      const profile = await db.get("SELECT isApproved FROM recycler_profiles WHERE userId = ?", user.id);
+      isApproved = profile?.isApproved || 0;
+    }
+
+    res.json({ token, role: user.role, requiresOnboarding: user.role === 'recycler' && !isApproved });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Login failed" });

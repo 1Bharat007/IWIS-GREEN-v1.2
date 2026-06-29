@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
@@ -20,11 +20,9 @@ export default function SettingsPage() {
   const [mounted, setMounted] = useState(false);
 
   // useEffect only runs on the client, so now we can safely show the UI
-  import("react").then((React) => {
-    React.useEffect(() => {
-      setMounted(true);
-    }, []);
-  });
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleDownloadData = () => {
     alert("Data download request submitted. You will receive an email shortly.");
