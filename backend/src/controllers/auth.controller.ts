@@ -1,58 +1,78 @@
+import { AppError, ValidationError, AuthenticationError, AuthorizationError, DatabaseError } from "../utils/errors";
+import { sendSuccess } from "../utils/apiResponse.util";
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
 import { z } from "zod";
 import { getDB } from "../db";
 import { getFirebaseAuth } from "../utils/firebase.util";
+import { emailService } from "../services/email.service";
+import { smsService } from "../services/sms.service";
 
 const JWT_SECRET = process.env.JWT_SECRET || "iwis_super_secret_key";
-
-// ─── Email transporter ───────────────────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
 
 // ─── SIGN UP ─────────────────────────────────────────────────────────────────
 const signupSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   role: z.enum(["citizen", "recycler"]).default("citizen"),
-  phone: z.string().min(10, "Valid phone number required"),
+  phone: z.string().optional(),
   displayName: z.string().min(2, "Name is required"),
   preferredLanguage: z.enum(["English", "हिन्दी", "Dogri"]).default("English"),
-  otp: z.string().length(6, "Invalid OTP format")
+  otp: z.string().optional()
 });
 
 export const signup = async (req: Request, res: Response) => {
   try {
     const parsed = signupSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.errors[0].message });
+      throw new ValidationError(parsed.error.errors[0].message);
     }
 
     const { email, password, role, phone, displayName, preferredLanguage, otp } = parsed.data;
 
     const db = await getDB();
 
-    // Verify OTP
-    const otpRecord = await db.get("SELECT * FROM otp_codes WHERE phone = ? AND otp = ?", [phone, otp]);
-    if (!otpRecord) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
-    }
-    if (new Date(otpRecord.expiresAt) < new Date()) {
-      return res.status(400).json({ message: "OTP has expired" });
+    const isOtpEnabled = process.env.ENABLE_PHONE_OTP !== "false";
+
+    if (isOtpEnabled) {
+      if (!phone || !otp) {
+        throw new ValidationError("Phone and OTP are required");
+      }
+
+      // Verify OTP
+      const otpRecord = await db.get("SELECT * FROM otp_codes WHERE phone = ?", [phone]);
+      if (!otpRecord) {
+        throw new ValidationError("Invalid or expired OTP");
+      }
+      
+      if (otpRecord.attempts >= 5) {
+        throw new AppError("Too many failed attempts. Please request a new OTP.", 429, "RATE_LIMIT");
+      }
+
+      if (new Date(otpRecord.expiresAt) < new Date()) {
+        throw new ValidationError("OTP has expired");
+      }
+
+      const isValidOtp = await bcrypt.compare(otp, otpRecord.otp);
+      if (!isValidOtp) {
+        await db.run("UPDATE otp_codes SET attempts = attempts + 1 WHERE phone = ?", [phone]);
+        throw new ValidationError("Invalid OTP");
+      }
     }
 
     // Check existing
-    const existing = await db.get("SELECT * FROM users WHERE email = ? OR phone = ?", [email, phone]);
+    const existingQuery = isOtpEnabled && phone 
+      ? "SELECT * FROM users WHERE email = ? OR phone = ?"
+      : "SELECT * FROM users WHERE email = ?";
+    
+    const existingParams = isOtpEnabled && phone ? [email, phone] : [email];
+    
+    const existing = await db.get(existingQuery, existingParams);
+    
     if (existing) {
-      return res.status(400).json({ message: "User with this email or phone already exists" });
+      throw new ValidationError("User with this email or phone already exists");
     }
 
     const hashed = await bcrypt.hash(password, 10);
@@ -60,32 +80,43 @@ export const signup = async (req: Request, res: Response) => {
 
     await db.run(
       "INSERT INTO users (id, email, password, role, phone, displayName, preferredLanguage, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-      [id, email, hashed, role, phone, displayName, preferredLanguage, new Date().toISOString()]
+      [id, email, hashed, role, phone || null, displayName, preferredLanguage, new Date().toISOString()]
     );
 
-    // Cleanup OTP
-    await db.run("DELETE FROM otp_codes WHERE phone = ?", [phone]);
+    if (isOtpEnabled && phone) {
+      // Cleanup OTP
+      await db.run("DELETE FROM otp_codes WHERE phone = ?", [phone]);
+    }
 
     const token = jwt.sign({ id, role }, JWT_SECRET, { expiresIn: "7d" });
-    res.json({ token, role });
+    sendSuccess(res, { token, role });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Signup failed" });
+    throw new DatabaseError("Signup failed");
   }
 };
 
 // ─── OTP ENDPOINTS ───────────────────────────────────────────────────────────
-const phoneSchema = z.object({
-  phone: z.string().min(10, "Valid phone number required")
+const otpRequestSchema = z.object({
+  phone: z.string().min(10, "Valid phone number required"),
+  email: z.string().email("Valid email address").optional()
 });
 
 export const sendOtp = async (req: Request, res: Response) => {
   try {
-    const parsed = phoneSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
+    const parsed = otpRequestSchema.safeParse(req.body);
+    if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
 
-    const { phone } = parsed.data;
+    const { phone, email } = parsed.data;
     const db = await getDB();
+    
+    let targetEmail = email;
+    if (!targetEmail) {
+      const user = await db.get("SELECT email FROM users WHERE phone = ?", phone);
+      if (user && user.email) {
+        targetEmail = user.email;
+      }
+    }
     
     // Check phone-level rate limits
     const existingOTP = await db.get("SELECT * FROM otp_codes WHERE phone = ?", phone);
@@ -98,7 +129,7 @@ export const sendOtp = async (req: Request, res: Response) => {
       
       // 1 per 60 seconds
       if (diffMs < 60 * 1000) {
-        return res.status(429).json({ message: "Please wait 60 seconds before requesting another OTP." });
+        throw new AppError("Please wait 60 seconds before requesting another OTP.", 429, "RATE_LIMIT");
       }
       
       // Reset hourly count if older than 1 hour, otherwise increment
@@ -110,52 +141,87 @@ export const sendOtp = async (req: Request, res: Response) => {
       
       // 5 per hour
       if (hourlyCount > 5) {
-        return res.status(429).json({ message: "You have exceeded the maximum number of OTP requests (5 per hour). Please try again later." });
+        throw new AppError("You have exceeded the maximum number of OTP requests (5 per hour). Please try again later.", 429, "RATE_LIMIT");
       }
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit random
+    const rawOtp = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digit random
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 minutes
 
+    const hashedOtp = await bcrypt.hash(rawOtp, 10);
+
     await db.run(
-      "INSERT INTO otp_codes (phone, otp, expiresAt, lastRequestedAt, hourlyCount) VALUES (?, ?, ?, ?, ?) ON CONFLICT(phone) DO UPDATE SET otp = excluded.otp, expiresAt = excluded.expiresAt, lastRequestedAt = excluded.lastRequestedAt, hourlyCount = excluded.hourlyCount",
-      [phone, otp, expiresAt, now.toISOString(), hourlyCount]
+      "INSERT INTO otp_codes (phone, otp, expiresAt, lastRequestedAt, hourlyCount, attempts) VALUES (?, ?, ?, ?, ?, 0) ON CONFLICT(phone) DO UPDATE SET otp = excluded.otp, expiresAt = excluded.expiresAt, lastRequestedAt = excluded.lastRequestedAt, hourlyCount = excluded.hourlyCount, attempts = 0",
+      [phone, hashedOtp, expiresAt, now.toISOString(), hourlyCount]
     );
 
-    // In production, integrate MSG91 or Twilio here. For now, log to console.
-    if (process.env.NODE_ENV !== "production") {
-      console.log(`
-==========================================
-IWIS DEVELOPMENT OTP
-
-Phone : ${phone}
-OTP   : ${otp}
-Valid : 5 minutes
-
-==========================================
-`);
+    // Send OTP concurrently
+    const tasks = [];
+    tasks.push(smsService.sendOtpSms(phone, rawOtp).then(res => ({ type: 'sms', success: res })));
+    if (targetEmail) {
+      // Don't catch the email service promise here. If it throws, it will reject the promise in the allSettled array.
+      tasks.push(emailService.sendOtpEmail(targetEmail, rawOtp).then(res => ({ type: 'email', success: res })));
     }
 
-    res.json({ message: "OTP sent successfully" });
+    const results = await Promise.allSettled(tasks);
+    
+    let emailSent = false;
+    let smsSent = false;
+    let emailError: string | null = null;
+
+    results.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        if (result.value.type === 'email' && result.value.success) emailSent = true;
+        if (result.value.type === 'sms' && result.value.success) smsSent = true;
+      } else if (result.status === 'rejected') {
+        emailError = result.reason?.message || "Failed to deliver email OTP.";
+      }
+    });
+
+    if (!emailSent && !smsSent) {
+      if (emailError) {
+        throw new DatabaseError(`SMTP Error: ${emailError}`);
+      }
+      throw new DatabaseError("Failed to deliver OTP via any channel. Please try again later.");
+    }
+
+    let statusMessage = "OTP sent successfully";
+    if (emailSent && smsSent) {
+      statusMessage = "OTP sent via Email and SMS.";
+    } else if (emailSent && !smsSent) {
+      statusMessage = "OTP sent via Email. SMS is disabled or temporarily unavailable.";
+    } else if (!emailSent && smsSent) {
+      statusMessage = "OTP sent via SMS. Email is temporarily unavailable.";
+    }
+
+    sendSuccess(res, { message: statusMessage, emailSent, smsSent });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to send OTP" });
+    console.error("[sendOtp Error]", err);
+    throw new DatabaseError("Failed to send OTP");
   }
 };
 
 export const verifyOtp = async (req: Request, res: Response) => {
   try {
     const { phone, otp } = req.body;
-    if (!phone || !otp) return res.status(400).json({ message: "Phone and OTP required" });
+    if (!phone || !otp) throw new ValidationError("Phone and OTP required");
 
     const db = await getDB();
-    const otpRecord = await db.get("SELECT * FROM otp_codes WHERE phone = ? AND otp = ?", [phone, otp]);
-    if (!otpRecord) return res.status(400).json({ message: "Invalid OTP" });
-    if (new Date(otpRecord.expiresAt) < new Date()) return res.status(400).json({ message: "OTP has expired" });
+    const otpRecord = await db.get("SELECT * FROM otp_codes WHERE phone = ?", [phone]);
+    
+    if (!otpRecord) throw new ValidationError("Invalid or expired OTP");
+    if (otpRecord.attempts >= 5) throw new AppError("Too many failed attempts. Please request a new OTP.", 429, "RATE_LIMIT");
+    if (new Date(otpRecord.expiresAt) < new Date()) throw new ValidationError("OTP has expired");
 
-    res.json({ message: "OTP verified successfully" });
+    const isValidOtp = await bcrypt.compare(otp, otpRecord.otp);
+    if (!isValidOtp) {
+      await db.run("UPDATE otp_codes SET attempts = attempts + 1 WHERE phone = ?", [phone]);
+      throw new ValidationError("Invalid OTP");
+    }
+
+    sendSuccess(res, { message: "OTP verified successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Failed to verify OTP" });
+    throw new DatabaseError("Failed to verify OTP");
   }
 };
 
@@ -170,11 +236,11 @@ export const login = async (req: Request, res: Response) => {
   try {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ message: parsed.error.errors[0].message });
+      throw new ValidationError(parsed.error.errors[0].message);
     }
 
     const { email, phone, password } = parsed.data;
-    if (!email && !phone) return res.status(400).json({ message: "Email or phone required" });
+    if (!email && !phone) throw new ValidationError("Email or phone required");
 
     const db = await getDB();
 
@@ -186,12 +252,12 @@ export const login = async (req: Request, res: Response) => {
     }
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      throw new ValidationError("Invalid credentials");
     }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      throw new ValidationError("Invalid credentials");
     }
 
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
@@ -202,10 +268,10 @@ export const login = async (req: Request, res: Response) => {
       isApproved = profile?.isApproved || 0;
     }
 
-    res.json({ token, role: user.role, requiresOnboarding: user.role === 'recycler' && !isApproved });
+    sendSuccess(res, { token, role: user.role, requiresOnboarding: user.role === 'recycler' && !isApproved });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Login failed" });
+    throw new DatabaseError("Login failed");
   }
 };
 
@@ -215,7 +281,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
     const { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ message: "Email is required" });
+      throw new ValidationError("Email is required");
     }
 
     const db = await getDB();
@@ -223,7 +289,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     // Always respond with success to prevent email enumeration
     if (!user) {
-      return res.json({ message: "If that email is registered, a reset link has been sent." });
+      return sendSuccess(res, { message: "If that email is registered, a reset link has been sent." });
     }
 
     // Generate a secure random token
@@ -248,31 +314,13 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     const resetLink = `${frontendUrl}/reset-password?token=${token}`;
 
-    // Send the email
-    await transporter.sendMail({
-      from: `"IWIS Green" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: "Reset your IWIS password",
-      html: `
-        <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;background:#0f0f0f;color:#fff;border-radius:16px;">
-          <h2 style="color:#4ade80;margin-bottom:8px;">🌿 IWIS Green</h2>
-          <h3 style="margin-top:0;">Password Reset Request</h3>
-          <p style="color:#a3a3a3;">We received a request to reset your password. Click the button below to create a new one. This link expires in <strong style="color:#fff;">1 hour</strong>.</p>
-          <a href="${resetLink}"
-             style="display:inline-block;margin:24px 0;padding:14px 32px;background:linear-gradient(135deg,#4ade80,#06b6d4);color:#000;font-weight:700;border-radius:12px;text-decoration:none;font-size:16px;">
-            Reset Password →
-          </a>
-          <p style="color:#737373;font-size:12px;">If you didn't request this, ignore this email — your password won't change.</p>
-          <hr style="border-color:#262626;margin:24px 0;" />
-          <p style="color:#525252;font-size:11px;">IWIS Green · Towards a greener planet</p>
-        </div>
-      `,
-    });
+    // Send the email using the centralized email service
+    await emailService.sendPasswordResetEmail(email, resetLink);
 
-    res.json({ message: "If that email is registered, a reset link has been sent." });
+    sendSuccess(res, { message: "If that email is registered, a reset link has been sent." });
   } catch (err) {
     console.error("[forgotPassword] error:", err);
-    res.status(500).json({ message: "Failed to send reset email. Please try again." });
+    throw new DatabaseError("Failed to send reset email. Please try again.");
   }
 };
 
@@ -282,11 +330,11 @@ export const resetPassword = async (req: Request, res: Response) => {
     const { token, password } = req.body;
 
     if (!token || !password) {
-      return res.status(400).json({ message: "Token and new password are required" });
+      throw new ValidationError("Token and new password are required");
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
+      throw new ValidationError("Password must be at least 6 characters");
     }
 
     const db = await getDB();
@@ -294,13 +342,13 @@ export const resetPassword = async (req: Request, res: Response) => {
     const record = await db.get("SELECT * FROM reset_tokens WHERE token = ?", token);
 
     if (!record) {
-      return res.status(400).json({ message: "Invalid or expired reset link" });
+      throw new ValidationError("Invalid or expired reset link");
     }
 
     // Check expiry
     if (new Date(record.expiresAt) < new Date()) {
       await db.run("DELETE FROM reset_tokens WHERE token = ?", token);
-      return res.status(400).json({ message: "Reset link has expired. Please request a new one." });
+      throw new ValidationError("Reset link has expired. Please request a new one.");
     }
 
     // Hash new password and update user
@@ -310,10 +358,10 @@ export const resetPassword = async (req: Request, res: Response) => {
     // Delete the used token
     await db.run("DELETE FROM reset_tokens WHERE token = ?", token);
 
-    res.json({ message: "Password reset successfully. You can now log in." });
+    sendSuccess(res, { message: "Password reset successfully. You can now log in." });
   } catch (err) {
     console.error("[resetPassword] error:", err);
-    res.status(500).json({ message: "Failed to reset password. Please try again." });
+    throw new DatabaseError("Failed to reset password. Please try again.");
   }
 };
 
@@ -329,7 +377,7 @@ export const getMe = async (req: any, res: Response) => {
        WHERE u.id = ?`,
       req.user.id
     );
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) throw new ValidationError("User not found");
 
     // Aggregate stats
     let completedPickups = 0;
@@ -350,7 +398,7 @@ export const getMe = async (req: any, res: Response) => {
       if (rating && rating.averageRating) recyclerRating = rating.averageRating;
     }
 
-    res.json({
+    sendSuccess(res, {
       ...user,
       completedPickups,
       successfulListings,
@@ -359,7 +407,7 @@ export const getMe = async (req: any, res: Response) => {
     });
   } catch (err) {
     console.error("[getMe] error:", err);
-    res.status(500).json({ message: "Failed to load profile." });
+    throw new DatabaseError("Failed to load profile.");
   }
 };
 
@@ -368,17 +416,17 @@ export const updateProfile = async (req: any, res: Response) => {
   try {
     const { displayName } = req.body;
     if (!displayName || typeof displayName !== "string" || displayName.trim().length === 0) {
-      return res.status(400).json({ message: "Display name is required." });
+      throw new ValidationError("Display name is required.");
     }
     const db = await getDB();
     await db.run(
       "UPDATE users SET displayName = ? WHERE id = ?",
       [displayName.trim().slice(0, 60), req.user.id]
     );
-    res.json({ message: "Profile updated.", displayName: displayName.trim() });
+    sendSuccess(res, { message: "Profile updated.", displayName: displayName.trim() });
   } catch (err) {
     console.error("[updateProfile] error:", err);
-    res.status(500).json({ message: "Failed to update profile." });
+    throw new DatabaseError("Failed to update profile.");
   }
 };
 
@@ -386,11 +434,11 @@ export const updateProfile = async (req: any, res: Response) => {
 export const firebaseLogin = async (req: Request, res: Response) => {
   try {
     const { idToken } = req.body;
-    if (!idToken) return res.status(400).json({ message: "Firebase ID token required" });
+    if (!idToken) throw new ValidationError("Firebase ID token required");
 
     const auth = getFirebaseAuth();
     if (!auth) {
-      return res.status(500).json({ message: "Firebase Auth is not configured on the server." });
+      throw new DatabaseError("Firebase Auth is not configured on the server.");
     }
 
     const decodedToken = await auth.verifyIdToken(idToken);
@@ -399,7 +447,7 @@ export const firebaseLogin = async (req: Request, res: Response) => {
     const name = decodedToken.name;
 
     if (!phone && !email) {
-      return res.status(400).json({ message: "No phone number or email found in Firebase token" });
+      throw new ValidationError("No phone number or email found in Firebase token");
     }
 
     const db = await getDB();
@@ -445,9 +493,9 @@ export const firebaseLogin = async (req: Request, res: Response) => {
     }
 
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
-    res.json({ token, role: user.role, requiresOnboarding: user.role === 'recycler' && !user.isApproved });
+    sendSuccess(res, { token, role: user.role, requiresOnboarding: user.role === 'recycler' && !user.isApproved });
   } catch (err) {
     console.error("[firebaseLogin] error:", err);
-    res.status(401).json({ message: "Invalid Firebase token or verification failed" });
+    throw new AuthenticationError("Invalid Firebase token or verification failed");
   }
 };

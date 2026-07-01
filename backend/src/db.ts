@@ -46,6 +46,8 @@ const executeInitDB = async () => {
       thumbnail TEXT,
       FOREIGN KEY(userId) REFERENCES users(id)
     );
+    CREATE INDEX IF NOT EXISTS idx_batches_user_time ON batches(userId, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_batches_category ON batches(category);
 
     CREATE TABLE IF NOT EXISTS listings (
       id TEXT PRIMARY KEY,
@@ -57,6 +59,26 @@ const executeInitDB = async () => {
       FOREIGN KEY(batchId) REFERENCES batches(id),
       FOREIGN KEY(userId) REFERENCES users(id)
     );
+
+    CREATE TABLE IF NOT EXISTS ai_telemetry (
+      id TEXT PRIMARY KEY,
+      timestamp TEXT,
+      userId TEXT,
+      aiVersion TEXT,
+      model TEXT,
+      latencyMs INTEGER,
+      status TEXT,
+      retryCount INTEGER,
+      validationFailed INTEGER DEFAULT 0,
+      normalizationCorrected INTEGER DEFAULT 0,
+      material TEXT,
+      confidence INTEGER,
+      errorCode TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON ai_telemetry(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_telemetry_status ON ai_telemetry(status);
+    CREATE INDEX IF NOT EXISTS idx_telemetry_material ON ai_telemetry(material);
+    CREATE INDEX IF NOT EXISTS idx_telemetry_aiVersion ON ai_telemetry(aiVersion);
 
     CREATE TABLE IF NOT EXISTS bids (
       id TEXT PRIMARY KEY,
@@ -97,6 +119,7 @@ const executeInitDB = async () => {
   
   try { await dbInstance.run("ALTER TABLE otp_codes ADD COLUMN lastRequestedAt TEXT"); } catch (e) {}
   try { await dbInstance.run("ALTER TABLE otp_codes ADD COLUMN hourlyCount INTEGER DEFAULT 0"); } catch (e) {}
+  try { await dbInstance.run("ALTER TABLE otp_codes ADD COLUMN attempts INTEGER DEFAULT 0"); } catch (e) {}
 
   // ─── NEW MVP TABLES ──────────────────────────────────────────────────────
 
@@ -140,6 +163,8 @@ const executeInitDB = async () => {
       FOREIGN KEY(citizenId) REFERENCES users(id),
       FOREIGN KEY(recyclerId) REFERENCES users(id)
     );
+    CREATE INDEX IF NOT EXISTS idx_waste_listings_status ON waste_listings(status);
+    CREATE INDEX IF NOT EXISTS idx_waste_listings_recyclerId ON waste_listings(recyclerId);
   `);
   
   // Idempotently add wasteVolume column if it doesn't exist
@@ -265,6 +290,23 @@ const executeInitDB = async () => {
       FOREIGN KEY(userId) REFERENCES users(id)
     );
   `);
+
+  // ─── SPRINT 2 MIGRATIONS (Batches Normalization) ───────────────────────────
+  const addColumn = async (table: string, columnDef: string) => {
+    try { await dbInstance.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); } catch (e) {}
+  };
+
+  await addColumn('batches', 'subCategory TEXT');
+  await addColumn('batches', 'recyclability TEXT');
+  await addColumn('batches', 'marketDemand TEXT');
+  await addColumn('batches', 'estimatedWeight REAL');
+  await addColumn('batches', 'estimatedPricePerKg REAL');
+  await addColumn('batches', 'aiVersion TEXT');
+  await addColumn('batches', 'processingTimeMs INTEGER');
+  await addColumn('batches', 'validationStatus TEXT');
+  await addColumn('batches', 'normalizationStatus TEXT');
+  await addColumn('batches', 'narrativeMetadata TEXT');
+
 
   // ─── PERFORMANCE INDEXES ───────────────────────────────────────────────────
   await dbInstance.exec(`

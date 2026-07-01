@@ -9,6 +9,7 @@ import {
   ScanIcon, ShoppingIcon, BotIcon, BarChartIcon, LeafIcon, 
   ArrowRightIcon, CheckCircleIcon, HistoryIcon 
 } from "@/components/ui/Icons";
+import { demoDashboardData } from "@/lib/demo/dashboard";
 
 interface DashboardData {
   totalEarnings: number;
@@ -23,6 +24,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("Citizen");
   const [role, setRole] = useState("citizen");
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
   
   // Feedback Modal State
   const [pendingFeedbackTx, setPendingFeedbackTx] = useState<any>(null);
@@ -40,12 +42,12 @@ export default function DashboardPage() {
       } catch {}
 
       try {
-        const [meRes, summaryRes, listingsRes, notifRes, txRes] = await Promise.all([
-          apiFetch("/auth/me"),
-          apiFetch("/transactions/summary").catch(() => null),
-          apiFetch("/listings/my").catch(() => null),
-          apiFetch("/notifications").catch(() => []),
-          apiFetch("/transactions").catch(() => [])
+        const [meRes, analyticsRes, listingsRes, notifRes, txRes] = await Promise.all([
+          apiFetch("/auth/me").then(r => r.data || r),
+          apiFetch("/analytics/citizen").then(r => r.data || r).catch(() => null),
+          apiFetch("/listings/my").then(r => r.data || r).catch(() => null),
+          apiFetch("/notifications").then(r => r.data || r).catch(() => []),
+          apiFetch("/transactions").then(r => r.data || r).catch(() => [])
         ]);
 
         if (meRes?.name) setUserName(meRes.name.split(" ")[0]);
@@ -58,14 +60,22 @@ export default function DashboardPage() {
         }
 
         const activeCount = listingsRes ? listingsRes.filter((l: any) => l.status !== "completed" && l.status !== "cancelled").length : 0;
-
-        setData({
-          totalEarnings: summaryRes?.totalEarnings || 0,
-          totalRecycledKg: summaryRes?.totalWeightRecycled || 0,
-          co2Saved: meRes?.totalCO2 || 0,
+        
+        let finalData: DashboardData = {
+          totalEarnings: analyticsRes?.estimatedEarnings || 0,
+          totalRecycledKg: listingsRes ? listingsRes.filter((l: any) => l.status === "completed").reduce((acc: number, l: any) => acc + (l.estimatedWeightKg || 0), 0) : 0,
+          co2Saved: analyticsRes?.totalCO2 || 0,
           activeListings: activeCount,
           recentNotifications: notifRes?.slice(0, 3) || []
-        });
+        };
+
+        if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+          if (finalData.totalEarnings === 0 && finalData.recentNotifications.length === 0) {
+            finalData = demoDashboardData;
+          }
+        }
+
+        setData(finalData);
       } catch (err) {
         console.error(err);
       } finally {
@@ -73,6 +83,12 @@ export default function DashboardPage() {
       }
     };
     load();
+    
+    if (sessionStorage.getItem("justLoggedIn")) {
+      setShowWelcomeBanner(true);
+      sessionStorage.removeItem("justLoggedIn");
+      setTimeout(() => setShowWelcomeBanner(false), 5000);
+    }
   }, []);
 
   const handleSubmitFeedback = async () => {
@@ -116,7 +132,17 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-8 animate-fadeIn max-w-5xl mx-auto">
+      <div className="space-y-8 animate-fadeIn max-w-5xl mx-auto relative">
+        
+        {/* Subtle Welcome Banner */}
+        {showWelcomeBanner && (
+          <div className="absolute top-0 left-0 right-0 -mt-2 mb-4 animate-in fade-in slide-in-from-top-4 duration-500 z-10">
+            <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--accent)] text-white text-sm font-medium rounded-xl shadow-lg shadow-[var(--accent)]/20">
+              <CheckCircleIcon size={16} />
+              <span>Authentication successful. Welcome to your workspace!</span>
+            </div>
+          </div>
+        )}
 
         {/* ── Welcome Header ────────────────────────────────────── */}
         <div>
@@ -126,6 +152,27 @@ export default function DashboardPage() {
           <p className="text-sm text-[var(--text-secondary)] mt-1">
             Here's what's happening with your recycling today.
           </p>
+        </div>
+
+        {/* ── My Impact & Earnings ───────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--surface)] relative overflow-hidden group hover:border-[var(--accent-border)] transition-colors">
+            <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">Total Earned</p>
+            <p className="text-3xl font-bold text-[var(--accent-text)]">₹{data?.totalEarnings || 0}</p>
+            <BarChartIcon size={64} className="absolute -right-4 -bottom-4 text-[var(--accent)] opacity-5 group-hover:scale-110 transition-transform duration-500" />
+          </div>
+
+          <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--surface)] relative overflow-hidden group hover:border-[var(--border-strong)] transition-colors">
+            <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">Waste Recycled</p>
+            <p className="text-3xl font-bold text-[var(--text-primary)]">{data?.totalRecycledKg || 0} <span className="text-lg text-[var(--text-tertiary)] font-medium">kg</span></p>
+            <CheckCircleIcon size={64} className="absolute -right-4 -bottom-4 text-[var(--text-primary)] opacity-5 group-hover:scale-110 transition-transform duration-500" />
+          </div>
+
+          <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--surface)] relative overflow-hidden group hover:border-[var(--border-strong)] transition-colors">
+            <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">CO₂ Prevented</p>
+            <p className="text-3xl font-bold text-[var(--text-primary)]">{(data?.co2Saved || 0).toFixed(1)} <span className="text-lg text-[var(--text-tertiary)] font-medium">kg</span></p>
+            <LeafIcon size={64} className="absolute -right-4 -bottom-4 text-[var(--text-primary)] opacity-5 group-hover:scale-110 transition-transform duration-500" />
+          </div>
         </div>
 
         {/* ── Quick Actions ────────────────────────────────────── */}
@@ -168,27 +215,6 @@ export default function DashboardPage() {
               <p className="text-xs text-[var(--text-secondary)]">24/7 Recycling Assistant</p>
             </div>
           </Link>
-        </div>
-
-        {/* ── My Impact & Earnings ───────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--surface)] relative overflow-hidden">
-            <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">Total Earned</p>
-            <p className="text-3xl font-bold text-[var(--accent-text)]">₹{data?.totalEarnings || 0}</p>
-            <BarChartIcon size={64} className="absolute -right-4 -bottom-4 text-[var(--accent)] opacity-5" />
-          </div>
-
-          <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--surface)] relative overflow-hidden">
-            <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">Waste Recycled</p>
-            <p className="text-3xl font-bold text-[var(--text-primary)]">{data?.totalRecycledKg || 0} <span className="text-lg text-[var(--text-tertiary)] font-medium">kg</span></p>
-            <CheckCircleIcon size={64} className="absolute -right-4 -bottom-4 text-[var(--text-primary)] opacity-5" />
-          </div>
-
-          <div className="p-5 rounded-xl border border-[var(--border)] bg-[var(--surface)] relative overflow-hidden">
-            <p className="text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-1">CO₂ Prevented</p>
-            <p className="text-3xl font-bold text-[var(--text-primary)]">{(data?.co2Saved || 0).toFixed(1)} <span className="text-lg text-[var(--text-tertiary)] font-medium">kg</span></p>
-            <LeafIcon size={64} className="absolute -right-4 -bottom-4 text-[var(--text-primary)] opacity-5" />
-          </div>
         </div>
 
         {/* ── Active Trackers ────────────────────────────────────── */}

@@ -183,10 +183,11 @@ export default function ChatPage() {
     }, 2000);
 
     try {
-      const response = await apiFetch("/chat", {
+      const _response = await apiFetch("/chat", {
         method: "POST",
         body: JSON.stringify({ message: messageText.trim(), history }),
       });
+        const response = _response.data || _response;
       if (stageRef.current) clearInterval(stageRef.current);
       
       // FIX: Update local storage directly in closure so it survives unmounting

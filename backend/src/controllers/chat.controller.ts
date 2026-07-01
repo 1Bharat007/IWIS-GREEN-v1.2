@@ -1,3 +1,5 @@
+import { sendSuccess } from "../utils/apiResponse.util";
+import { AppError, ValidationError, AuthenticationError, AuthorizationError, DatabaseError } from "../utils/errors";
 import { Request, Response } from "express";
 import { executeWithModelRouter } from "../utils/ai-router.util";
 import { getLocalResponse } from "../utils/local-kb.util";
@@ -33,13 +35,13 @@ export const handleChat = async (req: any, res: Response) => {
     const localReply = getLocalResponse(message);
     if (localReply) {
       await new Promise((resolve) => setTimeout(resolve, 100)); // slight natural delay
-      return res.json({ reply: localReply, source: "layer-1-static" });
+      return sendSuccess(res, { reply: localReply, source: "layer-1-static" });
     }
 
     // 1B. Check LRU Cache for identical recent complex queries
     const cachedReply = aiCache.get(message);
     if (cachedReply) {
-      return res.json({ reply: cachedReply, source: "layer-1-cache" });
+      return sendSuccess(res, { reply: cachedReply, source: "layer-1-cache" });
     }
 
     let finalReply = "";
@@ -63,7 +65,7 @@ export const handleChat = async (req: any, res: Response) => {
         
         // Cache and return instantly
         aiCache.set(message, finalReply);
-        return res.json({ reply: finalReply, source });
+        return sendSuccess(res, { reply: finalReply, source });
       }
     }
 
@@ -126,7 +128,7 @@ Always be encouraging and positive.`;
     // Cache the expensive generative response
     aiCache.set(message, finalReply);
 
-    res.json({ reply: finalReply, source });
+    sendSuccess(res, { reply: finalReply, source });
   } catch (error: any) {
     console.error("========================");
     console.error("[CHAT CONTROLLER ERROR]");

@@ -1,3 +1,5 @@
+import { AppError, ValidationError, AuthenticationError, AuthorizationError, DatabaseError } from "../utils/errors";
+import { sendSuccess } from "../utils/apiResponse.util";
 import { Request, Response } from "express";
 import { getDB } from "../db";
 
@@ -16,10 +18,10 @@ export const getMyTransactions = async (req: any, res: Response) => {
       [req.user.id, req.user.id]
     );
 
-    res.json(transactions);
+    sendSuccess(res, transactions);
   } catch (err) {
     console.error("[getMyTransactions] error:", err);
-    res.status(500).json({ message: "Failed to fetch transactions." });
+    throw new DatabaseError("Failed to fetch transactions.");
   }
 };
 
@@ -39,17 +41,17 @@ export const getTransactionDetails = async (req: any, res: Response) => {
     );
 
     if (!transaction) {
-      return res.status(404).json({ message: "Transaction not found." });
+      throw new ValidationError("Transaction not found.");
     }
 
     if (transaction.citizenId !== req.user.id && transaction.recyclerId !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'super_admin') {
-      return res.status(403).json({ message: "Access denied." });
+      throw new AuthorizationError("Access denied.");
     }
 
-    res.json(transaction);
+    sendSuccess(res, transaction);
   } catch (err) {
     console.error("[getTransactionDetails] error:", err);
-    res.status(500).json({ message: "Failed to fetch transaction details." });
+    throw new DatabaseError("Failed to fetch transaction details.");
   }
 };
 
@@ -82,7 +84,7 @@ export const getEarningsSummary = async (req: any, res: Response) => {
       `;
       queryParams = [req.user.id];
     } else {
-      return res.status(403).json({ message: "Role not supported for earnings summary." });
+      throw new AuthorizationError("Role not supported for earnings summary.");
     }
 
     const stats = await db.get(summaryQuery, queryParams);
@@ -91,14 +93,14 @@ export const getEarningsSummary = async (req: any, res: Response) => {
     
     if (req.user.role === 'citizen') {
       const totalEarnings = stats?.totalEarnings || 0;
-      res.json({
+      sendSuccess(res, {
         totalEarnings,
         totalWeightRecycled: stats?.totalWeightRecycled || 0,
         totalTransactions: totalTx,
         averageEarningsPerTransaction: totalTx > 0 ? (totalEarnings / totalTx) : 0,
       });
     } else {
-      res.json({
+      sendSuccess(res, {
         totalVolumeProcessed: stats?.totalVolumeProcessed || 0,
         totalWeightRecycled: stats?.totalWeightRecycled || 0,
         totalTransactions: totalTx,
@@ -107,7 +109,7 @@ export const getEarningsSummary = async (req: any, res: Response) => {
     }
   } catch (err) {
     console.error("[getEarningsSummary] error:", err);
-    res.status(500).json({ message: "Failed to fetch earnings summary." });
+    throw new DatabaseError("Failed to fetch earnings summary.");
   }
 };
 
@@ -117,16 +119,16 @@ export const submitFeedback = async (req: any, res: Response) => {
     const { rating, comment } = req.body;
 
     if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ message: "Valid rating between 1 and 5 is required." });
+      throw new ValidationError("Valid rating between 1 and 5 is required.");
     }
 
     const db = await getDB();
     const transaction = await db.get("SELECT * FROM transactions WHERE id = ?", id);
 
-    if (!transaction) return res.status(404).json({ message: "Transaction not found." });
-    if (transaction.citizenId !== req.user.id) return res.status(403).json({ message: "Only the citizen can submit feedback." });
-    if (transaction.feedbackRating) return res.status(400).json({ message: "Feedback already submitted for this transaction." });
-    if (transaction.status !== 'completed') return res.status(400).json({ message: "Transaction must be completed to submit feedback." });
+    if (!transaction) throw new ValidationError("Transaction not found.");
+    if (transaction.citizenId !== req.user.id) throw new AuthorizationError("Only the citizen can submit feedback.");
+    if (transaction.feedbackRating) throw new ValidationError("Feedback already submitted for this transaction.");
+    if (transaction.status !== 'completed') throw new ValidationError("Transaction must be completed to submit feedback.");
 
     // Update transaction with feedback
     await db.run(
@@ -142,9 +144,9 @@ export const submitFeedback = async (req: any, res: Response) => {
       await db.run("UPDATE recycler_profiles SET rating = ? WHERE userId = ?", [avg.toFixed(1), transaction.recyclerId]);
     }
 
-    res.json({ message: "Feedback submitted successfully." });
+    sendSuccess(res, { message: "Feedback submitted successfully." });
   } catch (err) {
     console.error("[submitFeedback] error:", err);
-    res.status(500).json({ message: "Failed to submit feedback." });
+    throw new DatabaseError("Failed to submit feedback.");
   }
 };

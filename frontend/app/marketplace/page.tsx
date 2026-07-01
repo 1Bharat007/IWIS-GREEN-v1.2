@@ -40,10 +40,14 @@ export default function MarketplacePage() {
     setLoading(true);
     try {
       if (activeTab === "Feed") {
-        const data = await apiFetch("/marketplace");
+        const __data = await apiFetch("/marketplace");
+        const _data = __data.data || __data;
+        const data = _data.data || _data;
         setFeed(data);
       } else {
-        const data = await apiFetch("/marketplace/my-listings");
+        const __data = await apiFetch("/marketplace/my-listings");
+        const _data = __data.data || __data;
+        const data = _data.data || _data;
         setMyListings(data);
       }
     } catch (err) {

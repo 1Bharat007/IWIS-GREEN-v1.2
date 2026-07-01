@@ -8,9 +8,18 @@ import listingRoutes from "./routes/listing.routes";
 import priceRoutes from "./routes/price.routes";
 import transactionRoutes from "./routes/transaction.routes";
 import notificationRoutes from "./routes/notification.routes";
+import analyticsRoutes from "./routes/analytics.routes";
+import municipalityRoutes from "./routes/municipality.routes";
 import errorMiddleware from "./middleware/error.middleware";
+import { requestLogger } from "./middleware/logger.middleware";
+import { standardLimiter } from "./middleware/rateLimit.middleware";
+import helmet from "helmet";
 
 const app = express();
+
+app.use(helmet());
+app.use(requestLogger);
+app.use(standardLimiter);
 
 app.use(
   cors({
@@ -65,7 +74,8 @@ app.use("/api/listings", listingRoutes);
 app.use("/api/prices", priceRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/notifications", notificationRoutes);
-
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/municipality", municipalityRoutes);
 // Debug endpoint — shows Gemini config status without exposing keys
 import { debugGemini } from "./controllers/debug.controller";
 app.get("/api/debug/gemini", debugGemini);

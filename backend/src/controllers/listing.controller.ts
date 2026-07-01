@@ -1,3 +1,5 @@
+import { AppError, ValidationError, AuthenticationError, AuthorizationError, DatabaseError } from "../utils/errors";
+import { sendSuccess } from "../utils/apiResponse.util";
 import { Request, Response } from "express";
 import crypto from "crypto";
 import { getDB } from "../db";
@@ -8,15 +10,15 @@ export const createListing = async (req: any, res: Response) => {
     const { materialType, wasteVolume, estimatedWeightKg, photoUrl, description, pickupAddress, lat, lng } = req.body;
 
     if (!materialType || !pickupAddress || (!wasteVolume && !estimatedWeightKg)) {
-      return res.status(400).json({ message: "Material type, pickup address, and a quantity (volume or weight) are required." });
+      throw new ValidationError("Material type, pickup address, and a quantity (volume or weight) are required.");
     }
 
     if (photoUrl && photoUrl.length > 700000) { // ~500KB base64
-      return res.status(400).json({ message: "Image is too large. Maximum allowed size is 500 KB." });
+      throw new ValidationError("Image is too large. Maximum allowed size is 500 KB.");
     }
 
     if (req.user.role !== "citizen") {
-      return res.status(403).json({ message: "Only citizens can create waste listings." });
+      throw new AuthorizationError("Only citizens can create waste listings.");
     }
 
     let finalLat = lat;
@@ -72,10 +74,10 @@ export const createListing = async (req: any, res: Response) => {
       `Your ${materialType} waste listing was successfully created.`
     );
 
-    res.status(201).json({ message: "Listing created successfully.", id });
+    sendSuccess(res, { message: "Listing created successfully.", id });
   } catch (err) {
     console.error("[createListing] error:", err);
-    res.status(500).json({ message: "Failed to create listing." });
+    throw new DatabaseError("Failed to create listing.");
   }
 };
 
@@ -93,17 +95,17 @@ export const getMyListings = async (req: any, res: Response) => {
        ORDER BY wl.createdAt DESC`,
       req.user.id
     );
-    res.json(listings);
+    sendSuccess(res, listings);
   } catch (err) {
     console.error("[getMyListings] error:", err);
-    res.status(500).json({ message: "Failed to fetch listings." });
+    throw new DatabaseError("Failed to fetch listings.");
   }
 };
 
 export const getNearbyListings = async (req: any, res: Response) => {
   try {
     if (req.user.role !== "recycler") {
-      return res.status(403).json({ message: "Only recyclers can access the feed." });
+      throw new AuthorizationError("Only recyclers can access the feed.");
     }
 
     const { lat, lng, radiusKm = 10 } = req.query;
@@ -138,20 +140,20 @@ export const getNearbyListings = async (req: any, res: Response) => {
         listing.distanceKm = distance.toFixed(1);
         return distance <= maxRadius;
       });
-      return res.json(filtered);
+      return sendSuccess(res, filtered);
     }
 
-    res.json(listings);
+    sendSuccess(res, listings);
   } catch (err) {
     console.error("[getNearbyListings] error:", err);
-    res.status(500).json({ message: "Failed to fetch nearby listings." });
+    throw new DatabaseError("Failed to fetch nearby listings.");
   }
 };
 
 export const acceptListing = async (req: any, res: Response) => {
   try {
     if (req.user.role !== "recycler") {
-      return res.status(403).json({ message: "Only recyclers can accept listings." });
+      throw new AuthorizationError("Only recyclers can accept listings.");
     }
 
     const { id } = req.params;
@@ -179,10 +181,10 @@ export const acceptListing = async (req: any, res: Response) => {
       );
     }
 
-    res.json({ message: "Listing accepted successfully." });
+    sendSuccess(res, { message: "Listing accepted successfully." });
   } catch (err) {
     console.error("[acceptListing] error:", err);
-    res.status(500).json({ message: "Failed to accept listing." });
+    throw new DatabaseError("Failed to accept listing.");
   }
 };
 
@@ -197,11 +199,11 @@ export const getListing = async (req: any, res: Response) => {
        WHERE wl.id = ?`,
       id
     );
-    if (!listing) return res.status(404).json({ message: "Listing not found" });
-    res.json(listing);
+    if (!listing) throw new ValidationError("Listing not found");
+    sendSuccess(res, listing);
   } catch (err) {
     console.error("[getListing] error:", err);
-    res.status(500).json({ message: "Failed to fetch listing." });
+    throw new DatabaseError("Failed to fetch listing.");
   }
 };
 
@@ -209,13 +211,13 @@ export const schedulePickup = async (req: any, res: Response) => {
   try {
     const { id } = req.params;
     const { scheduledDate, scheduledTimeSlot } = req.body;
-    if (!scheduledDate || !scheduledTimeSlot) return res.status(400).json({ message: "Date and time slot required." });
+    if (!scheduledDate || !scheduledTimeSlot) throw new ValidationError("Date and time slot required.");
 
     const db = await getDB();
     const listing = await db.get("SELECT status, recyclerId FROM waste_listings WHERE id = ?", id);
-    if (!listing) return res.status(404).json({ message: "Not found." });
-    if (listing.recyclerId !== req.user.id) return res.status(403).json({ message: "Not your pickup." });
-    if (listing.status !== 'accepted') return res.status(400).json({ message: "Listing must be accepted first." });
+    if (!listing) throw new ValidationError("Not found.");
+    if (listing.recyclerId !== req.user.id) throw new AuthorizationError("Not your pickup.");
+    if (listing.status !== 'accepted') throw new ValidationError("Listing must be accepted first.");
 
     await db.run(
       "UPDATE waste_listings SET status = 'scheduled', scheduledDate = ?, scheduledTimeSlot = ?, updatedAt = ? WHERE id = ?",
@@ -229,10 +231,10 @@ export const schedulePickup = async (req: any, res: Response) => {
       `Your pickup is scheduled for ${new Date(scheduledDate).toLocaleDateString()} between ${scheduledTimeSlot}.`
     );
 
-    res.json({ message: "Pickup scheduled." });
+    sendSuccess(res, { message: "Pickup scheduled." });
   } catch (err) {
     console.error("[schedulePickup] error:", err);
-    res.status(500).json({ message: "Failed to schedule pickup." });
+    throw new DatabaseError("Failed to schedule pickup.");
   }
 };
 
@@ -242,20 +244,20 @@ export const confirmPickup = async (req: any, res: Response) => {
     const { actualWeightKg, pickupPhotoUrl, paymentMethod = 'cash' } = req.body;
     const weight = parseFloat(actualWeightKg);
     if (isNaN(weight) || weight <= 0) {
-      return res.status(400).json({ message: "Invalid weight. Must be greater than 0." });
+      throw new ValidationError("Invalid weight. Must be greater than 0.");
     }
 
     const db = await getDB();
     const listing = await db.get("SELECT * FROM waste_listings WHERE id = ?", id);
-    if (!listing) return res.status(404).json({ message: "Not found." });
-    if (listing.recyclerId !== req.user.id) return res.status(403).json({ message: "Not your pickup." });
-    if (listing.status === 'completed') return res.status(400).json({ message: "Listing already completed." });
-    if (listing.status !== 'scheduled' && listing.status !== 'accepted') return res.status(400).json({ message: "Invalid status." });
+    if (!listing) throw new ValidationError("Not found.");
+    if (listing.recyclerId !== req.user.id) throw new AuthorizationError("Not your pickup.");
+    if (listing.status === 'completed') throw new ValidationError("Listing already completed.");
+    if (listing.status !== 'scheduled' && listing.status !== 'accepted') throw new ValidationError("Invalid status.");
 
     // Query Scrap Price Engine
     const priceRecord = await db.get("SELECT pricePerKg FROM scrap_prices WHERE material = ? LIMIT 1", listing.materialType);
     if (!priceRecord || priceRecord.pricePerKg < 0) {
-      return res.status(400).json({ message: "Missing or invalid scrap price for this material." });
+      throw new ValidationError("Missing or invalid scrap price for this material.");
     }
     const pricePerKg = priceRecord.pricePerKg;
 
@@ -296,9 +298,9 @@ export const confirmPickup = async (req: any, res: Response) => {
       `A ${paymentMethod === 'upi' ? 'UPI' : 'cash'} payment of ₹${citizenEarnings.toFixed(2)} was recorded for your listing.`
     );
 
-    res.json({ message: "Pickup confirmed and transaction generated." });
+    sendSuccess(res, { message: "Pickup confirmed and transaction generated." });
   } catch (err) {
     console.error("[confirmPickup] error:", err);
-    res.status(500).json({ message: "Failed to confirm pickup." });
+    throw new DatabaseError("Failed to confirm pickup.");
   }
 };

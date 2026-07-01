@@ -200,6 +200,33 @@ Please review our [Contributing Guidelines](./CONTRIBUTING.md) and [Code of Cond
 
 ---
 
+## OTP Delivery Configuration
+
+IWIS uses a dual-channel OTP delivery system (Email + SMS) for authentication.
+
+### 1. Gmail SMTP Setup (Email OTP)
+1. Turn on **2-Step Verification** for your Gmail account.
+2. Go to Google Account > Security > App Passwords.
+3. Generate a new App Password (e.g., for "IWIS Backend").
+4. Add the credentials to `backend/.env`:
+   \`\`\`env
+   EMAIL_USER=your_gmail@gmail.com
+   EMAIL_PASS=your_16_character_app_password
+   \`\`\`
+
+### 2. Android SMS Gateway Setup (Airtel SIM)
+Instead of using paid APIs like Twilio, IWIS routes SMS OTPs through a local Android phone.
+1. Install an **SMS Gateway API** app on your Android device (e.g., "SMS Gateway" from the Play Store).
+2. Connect the phone to the same local network as your backend server.
+3. Start the HTTP server inside the app. Note the displayed IP Address and Port.
+4. Add the credentials to `backend/.env`:
+   \`\`\`env
+   SMS_GATEWAY_URL=http://<PHONE_IP>:<PORT>/v1/sms/send
+   SMS_GATEWAY_API_KEY=your_optional_api_key
+   \`\`\`
+
+---
+
 ## License
 
 This project is licensed under the [MIT License](./LICENSE). 

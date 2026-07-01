@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import { executeWithModelRouter } from "../utils/ai-router.util";
 import { ApiError } from "../utils/errors";
+import { logAITelemetry } from "./telemetry.service";
+import { TelemetryStatus, TelemetryErrorCode } from "../types/telemetry.types";
 
 type ScanResult = {
   category: string;
@@ -20,7 +22,10 @@ const CO2_PER_CATEGORY: Record<string, number> = {
   Other:    1.0,
 };
 
-export const analyzeImage = async (imageBase64: string): Promise<ScanResult> => {
+import { normalizeAndValidateAIResponse } from "./ai.validator";
+import { AIResponse } from "../types/ai.types";
+
+export const analyzeImage = async (imageBase64: string): Promise<AIResponse> => {
   const hash = crypto.createHash("sha256").update(imageBase64).digest("hex");
 
   let mimeType = "image/jpeg";
@@ -34,86 +39,138 @@ export const analyzeImage = async (imageBase64: string): Promise<ScanResult> => 
     }
   }
 
-  const prompt = `You are a waste classification AI for India's IWIS (Integrated Waste Intelligence System).
-
+  const prompt = `You are a strict waste classification AI for India's IWIS (Integrated Waste Intelligence System).
 Analyze this image and classify the waste material.
 
-Return ONLY a valid JSON object (no markdown, no explanation) with this exact structure:
+Return ONLY a valid JSON object (no markdown, no backticks, no explanation) with this exact structure:
 {
-  "primary": { "category": "Metal", "confidence": 92 },
-  "alternatives": [
-    { "category": "Plastic", "confidence": 45 },
-    { "category": "Other", "confidence": 12 }
-  ],
-  "co2": 3.8
+  "category": "Metal",
+  "subCategory": "Aluminum Can",
+  "confidence": 92,
+  "co2": 3.8,
+  "estimatedWeightKg": 0.05,
+  "marketDemand": "High",
+  "recyclability": "Infinitely recyclable",
+  "disposalAdvice": "Crush before disposing to save space.",
+  "recyclingInstructions": "Empty liquids and rinse before recycling.",
+  "safetyWarnings": "Edges may be sharp if crushed.",
+  "interestingFact": "Recycling one aluminum can saves enough energy to run a TV for 3 hours.",
+  "example": "Soda can"
 }
 
 Rules:
-- "category" must be one of: Plastic, Paper, Metal, Glass, Organic, Other
-- "confidence" is an integer 0-100 representing your certainty
-- "co2" is the estimated kg of CO₂ avoided if properly recycled (e.g., Metal = 3.8)
-- "alternatives" lists up to 2 other plausible categories with their confidence scores
-- If the image is blurry, ambiguous, or not clearly waste, set confidence below 60
-- Never guess with false certainty — lower confidence is more trustworthy than wrong certainty`;
+1. "category" MUST be exactly one of: Plastic, Paper, Metal, Glass, Organic, E-Waste, Other, or Unknown.
+2. "confidence" is an integer 0-100.
+3. If the image is blurry, ambiguous, or not clearly waste, YOU MUST return "category": "Unknown" and confidence < 70. Never guess.
+4. "marketDemand" MUST be exactly one of: High, Medium, Low, None.
+5. Keep text fields concise (1-2 sentences max).`;
 
-  // 15-second timeout per attempt to allow fast cascading fallbacks
-  const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => {
-      const err: any = new Error("TIMEOUT");
-      err.status = 504; // Marks error as retryable for the router
-      reject(err);
-    }, 15000)
-  );
+  const fetchFromAI = async (timeoutMs: number): Promise<string> => {
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => {
+        const err: any = new Error("TIMEOUT");
+        err.status = 504;
+        reject(err);
+      }, timeoutMs)
+    );
 
-  const geminiPromise = executeWithModelRouter(
-    (ai, modelName) =>
-      ai.models.generateContent({
-        model: modelName,
-        contents: [
-          prompt,
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType,
-            },
-          },
-        ],
-        config: {
-          responseMimeType: "application/json",
-        },
-      }),
-    "gemini-2.5-flash", // Primary fast model for vision
-    ["gemini-1.5-flash", "gemini-1.5-pro"] // Fallbacks
-  );
+    const geminiPromise = executeWithModelRouter(
+      (ai, modelName) =>
+        ai.models.generateContent({
+          model: modelName,
+          contents: [
+            prompt,
+            { inlineData: { data: base64Data, mimeType } },
+          ],
+          config: { responseMimeType: "application/json" },
+        }),
+      "gemini-2.5-flash",
+      ["gemini-1.5-flash"]
+    );
 
-  const response = await Promise.race([geminiPromise, timeoutPromise]);
-  const text = (response as any).text || "{}";
-  
-  let parsed;
+    const response = await Promise.race([geminiPromise, timeoutPromise]);
+    return (response as any).text || "{}";
+  };
+
+  let text = "";
+  let timeoutOccurred = false;
+  let jsonParseFailed = false;
+  let retryCount = 0;
+  let networkError = false;
+  const startTime = Date.now();
+  const aiVersion = "gemini-2.5-flash"; // from executeWithModelRouter primary
+
   try {
-    parsed = JSON.parse(text);
-  } catch (e) {
-    throw new Error("Failed to parse JSON response from AI");
+    text = await fetchFromAI(4000); // 4s soft timeout
+  } catch (err: any) {
+    retryCount++;
+    try {
+      // 1-Time Retry with another 4s timeout (8s max total)
+      text = await fetchFromAI(4000); 
+    } catch (retryErr: any) {
+      if (retryErr?.message === "TIMEOUT") {
+        timeoutOccurred = true;
+      } else {
+        networkError = true;
+      }
+    }
   }
 
-  const category: string = parsed?.primary?.category || parsed?.category || "Other";
-  const confidence: number =
-    typeof parsed?.primary?.confidence === "number"
-      ? parsed.primary.confidence
-      : typeof parsed?.confidence === "number"
-      ? parsed.confidence
-      : 0;
-  const co2: number =
-    typeof parsed?.co2 === "number"
-      ? parsed.co2
-      : CO2_PER_CATEGORY[category] ?? 1.0;
+  let parsed;
+  if (!timeoutOccurred && !networkError) {
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      jsonParseFailed = true;
+    }
+  }
 
-  return {
-    category,
-    confidence,
-    co2: parseFloat(co2.toFixed(2)),
-    imageHash: hash,
-    alternatives: parsed?.alternatives ?? [],
-    lowConfidence: confidence < 75,
-  };
+  if (timeoutOccurred || jsonParseFailed || networkError) {
+    parsed = { 
+      category: "Unknown", 
+      confidence: 0,
+      disposalAdvice: "We're having trouble analyzing this image right now. Please try another photo or try again in a moment." 
+    };
+  }
+
+  const validated = normalizeAndValidateAIResponse(parsed);
+  const processingTimeMs = Date.now() - startTime;
+  
+  let errorCode = TelemetryErrorCode.NONE;
+  let status = TelemetryStatus.SUCCESS;
+
+  if (timeoutOccurred) {
+    errorCode = TelemetryErrorCode.TIMEOUT;
+    status = TelemetryStatus.TIMEOUT;
+  } else if (networkError) {
+    errorCode = TelemetryErrorCode.NETWORK;
+    status = TelemetryStatus.NETWORK_ERROR;
+  } else if (jsonParseFailed) {
+    errorCode = TelemetryErrorCode.JSON_PARSE;
+    status = TelemetryStatus.MODEL_ERROR;
+  } else if (validated.validationFailed) {
+    errorCode = TelemetryErrorCode.INVALID_SCHEMA;
+    status = TelemetryStatus.VALIDATION_FAILED;
+  } else if (validated.category === "Unknown") {
+    status = TelemetryStatus.UNKNOWN;
+  }
+
+  logAITelemetry({
+    aiVersion,
+    model: aiVersion,
+    latencyMs: processingTimeMs,
+    status,
+    retryCount,
+    validationFailed: !!validated.validationFailed,
+    normalizationCorrected: !!validated.normalizationCorrected,
+    material: validated.category,
+    confidence: validated.confidence,
+    errorCode,
+  });
+  
+  validated.imageHash = hash;
+  validated.aiVersion = timeoutOccurred || networkError ? "fallback-error" : aiVersion;
+  validated.processingTimeMs = processingTimeMs;
+  
+  return validated;
 };

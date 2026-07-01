@@ -6,8 +6,12 @@ node_modules/
 
 # Backend specific
 backend/dist/
-backend/*.db
-backend/*.sqlite
+# SQLite
+*.db
+*.sqlite
+*.db-shm
+*.db-wal
+*.db-journal
 
 # Frontend specific
 frontend/.next/

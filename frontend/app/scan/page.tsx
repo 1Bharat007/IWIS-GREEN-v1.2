@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { apiFetch, ApiError } from "@/lib/api";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
-import { UploadIcon, CheckIcon, AlertIcon, RefreshIcon } from "@/components/ui/Icons";
+import { UploadIcon, CheckIcon, AlertIcon, RefreshIcon, ArrowRightIcon } from "@/components/ui/Icons";
 import { useTasks } from "@/components/providers/TaskProvider";
+import { demoHistoryScans } from "@/lib/demo/history";
 
 const CATEGORY_LABELS: Record<string, string> = {
   Plastic: "Plastic",
@@ -15,13 +16,14 @@ const CATEGORY_LABELS: Record<string, string> = {
   Other:   "Mixed / Other",
 };
 
-// Staged loading messages — feel intelligent, not frozen
+// Staged loading messages — actual workflow stages
 const SCAN_STAGES = [
-  { label: "Uploading image…",              minProgress: 0  },
-  { label: "Preprocessing visual data…",    minProgress: 18 },
-  { label: "Running material analysis…",    minProgress: 36 },
-  { label: "Calculating carbon impact…",    minProgress: 58 },
-  { label: "Finalizing classification…",    minProgress: 80 },
+  { label: "Preparing image...",           minProgress: 0  },
+  { label: "Uploading...",                 minProgress: 10 },
+  { label: "Analyzing with AI...",         minProgress: 30 },
+  { label: "Validating results...",        minProgress: 70 },
+  { label: "Saving scan...",               minProgress: 90 },
+  { label: "Complete.",                    minProgress: 100 },
 ];
 
 type ScanResult = {
@@ -108,8 +110,16 @@ export default function ScanPage() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const data = await apiFetch("/waste/history?limit=10");
-        setRecentScans(data.history || []);
+        const __response = await apiFetch("/waste/history?limit=10");
+        const _response = __response.data || __response;
+        const response = _response.data || _response;
+        const data = response.data || {};
+        const history = data.history || [];
+        if (history.length === 0 && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+          setRecentScans(demoHistoryScans);
+        } else {
+          setRecentScans(history);
+        }
       } catch (err) {
         console.error("Failed to load history", err);
       } finally {
@@ -120,34 +130,22 @@ export default function ScanPage() {
   }, []);
 
   const startProgress = () => {
-    setProgress(0);
+    setProgress(10);
     setStageIdx(0);
-    let p = 0;
-    let s = 0;
+    updateTaskProgress("global_scan", SCAN_STAGES[0].label, 10);
+  };
 
-    progressRef.current = setInterval(() => {
-      p += Math.random() * 6 + 3;
-      if (p >= 88) { p = 88; if (progressRef.current) clearInterval(progressRef.current); }
-      setProgress(Math.min(p, 88));
-
-      // Advance stage based on progress
-      const nextStage = SCAN_STAGES.findIndex((st, i) => i > s && p >= st.minProgress);
-      if (nextStage !== -1) { 
-        s = nextStage; 
-        setStageIdx(s); 
-        updateTaskProgress("global_scan", SCAN_STAGES[s].label, Math.min(p, 88));
-      } else {
-        updateTaskProgress("global_scan", SCAN_STAGES[s].label, Math.min(p, 88));
-      }
-    }, 200);
+  const advanceProgress = (stage: number, prog: number) => {
+    setStageIdx(stage);
+    setProgress(prog);
+    updateTaskProgress("global_scan", SCAN_STAGES[stage].label, prog);
   };
 
   const finishProgress = () => {
-    if (progressRef.current) clearInterval(progressRef.current);
-    if (stageRef.current)    clearInterval(stageRef.current);
+    if (stageRef.current) clearTimeout(stageRef.current);
     setProgress(100);
     setStageIdx(SCAN_STAGES.length - 1);
-    updateTaskProgress("global_scan", "Complete", 100);
+    updateTaskProgress("global_scan", "Complete.", 100);
     setTimeout(() => setProgress(0), 600);
   };
 
@@ -162,7 +160,7 @@ export default function ScanPage() {
           const canvas = document.createElement("canvas");
           let width = img.width;
           let height = img.height;
-          const max_size = 1000;
+          const max_size = 800; // further reduced for performance
 
           if (width > height && width > max_size) {
             height *= max_size / width;
@@ -176,25 +174,25 @@ export default function ScanPage() {
           canvas.height = height;
           const ctx = canvas.getContext("2d");
           ctx?.drawImage(img, 0, 0, width, height);
-          const base64 = canvas.toDataURL("image/jpeg", 0.7);
+          const base64 = canvas.toDataURL("image/webp", 0.6); // webp is faster and smaller
 
           // Generate Thumbnail
           const thumbCanvas = document.createElement("canvas");
           let thumbW = img.width;
           let thumbH = img.height;
-          const thumbMax = 200;
+          const thumbMax = 150;
           if (thumbW > thumbH && thumbW > thumbMax) {
             thumbH *= thumbMax / thumbW;
             thumbW = thumbMax;
           } else if (thumbH > thumbMax) {
             thumbW *= thumbMax / thumbH;
-            thumbH = thumbMax;
+            height = thumbMax;
           }
           thumbCanvas.width = thumbW;
           thumbCanvas.height = thumbH;
           const thumbCtx = thumbCanvas.getContext("2d");
           thumbCtx?.drawImage(img, 0, 0, thumbW, thumbH);
-          const thumbnail = thumbCanvas.toDataURL("image/webp", 0.5);
+          const thumbnail = thumbCanvas.toDataURL("image/webp", 0.4);
 
           resolve({ base64, thumbnail });
         };
@@ -211,34 +209,55 @@ export default function ScanPage() {
     }
     
     try {
+      // Immediate UI transition
+      setPreview(URL.createObjectURL(file));
       setResult(null);
       setError(null);
       startTask("global_scan", "scan", "AI Waste Scan");
-      startProgress();
+      startProgress(); // Preparing image...
       
+      const t0 = performance.now();
       const { base64, thumbnail } = await compressImage(file);
-      setPreview(base64);
+      const tCompress = performance.now() - t0;
+      
+      advanceProgress(1, 30); // Uploading...
 
+      // Fast location fallback (do not block heavily)
       let lat: number | null = null, lng: number | null = null;
       try {
         if ("geolocation" in navigator) {
           const pos = await new Promise<GeolocationPosition>((res, rej) =>
-            navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3000 })
+            navigator.geolocation.getCurrentPosition(res, rej, { maximumAge: 60000, timeout: 1500 })
           );
           lat = pos.coords.latitude;
           lng = pos.coords.longitude;
         }
       } catch { /* GPS optional */ }
 
+      // Simulate API stages since fetch is atomic
+      stageRef.current = setTimeout(() => advanceProgress(2, 50), 600); // Analyzing...
+      const valTimer = setTimeout(() => advanceProgress(3, 80), 3000); // Validating...
+      const saveTimer = setTimeout(() => advanceProgress(4, 90), 4000); // Saving...
+
+      const tUploadStart = performance.now();
       try {
-        const data = await apiFetch("/waste/scan", {
+        const _response = await apiFetch("/waste/scan", {
           method: "POST",
           body: JSON.stringify({ image: base64, thumbnail, lat, lng }),
         });
+        const response = _response.data || _response;
+        const data = response.data; // Explicit unwrapping as per Phase 2 standardization
+        
+        const tApiTotal = performance.now() - tUploadStart;
+        
+        clearTimeout(valTimer);
+        clearTimeout(saveTimer);
         finishProgress();
+        
         // Stash the preview image inside the payload so we can recover it if returning from another page
         completeTask("global_scan", { ...data, preview: base64 });
 
+        const tRenderStart = performance.now();
         // Prepend to history locally
         setRecentScans(prev => [{
           id: Math.random().toString(), // local temporary id
@@ -249,18 +268,30 @@ export default function ScanPage() {
           thumbnail: thumbnail,
           estimatedPricePerKg: data.estimatedPricePerKg
         }, ...prev]);
+        const tRender = performance.now() - tRenderStart;
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("=== SPRINT 2 PERFORMANCE TELEMETRY ===");
+          console.log(`Compression time: ${Math.round(tCompress)}ms`);
+          console.log(`Total API Roundtrip: ${Math.round(tApiTotal)}ms`);
+          console.log(`- Gemini AI time: ${data.processingTimeMs || 0}ms`);
+          console.log(`- Network/DB overhead: ${Math.round(tApiTotal - (data.processingTimeMs || 0))}ms`);
+          console.log(`Frontend render time: ${Math.round(tRender)}ms`);
+        }
+
       } catch (err: any) {
+        clearTimeout(valTimer);
+        clearTimeout(saveTimer);
         finishProgress();
         const msg = err instanceof ApiError
           ? err.backendMessage
           : err?.message?.includes("Failed to fetch")
             ? "Server is starting up — please wait 15 seconds and try again."
-            : err?.message || "Scan failed. Please try again.";
+            : err?.message || "We're having trouble analyzing this image right now. Please try again.";
         failTask("global_scan", msg);
-        setPreview(null);
       }
     } catch (err) {
-      setError("Failed to compress image.");
+      setError("Failed to process image.");
       finishProgress();
       failTask("global_scan", "Image processing failed.");
     }
@@ -379,19 +410,31 @@ export default function ScanPage() {
 
         {/* Scanning state with staged overlay */}
         {preview && loading && (
-          <div className="relative rounded-xl overflow-hidden border border-[var(--border)] aspect-video bg-[var(--surface-raised)]">
-            <img src={preview} alt="Analyzing" className="object-contain w-full h-full opacity-30" />
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-              <div className="w-full h-px bg-[var(--accent)] absolute animate-scanline opacity-70" />
+          <div className="relative rounded-xl overflow-hidden border border-[var(--border)] aspect-video bg-[#000]">
+            <img src={preview} alt="Analyzing" className="object-contain w-full h-full opacity-50" />
+            
+            {/* Viewfinder Brackets */}
+            <div className="absolute inset-6 pointer-events-none border border-[var(--border-strong)] rounded-xl opacity-40 mix-blend-overlay hidden sm:block">
+              <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-[var(--accent)] rounded-tl-xl -mt-[2px] -ml-[2px]" />
+              <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-[var(--accent)] rounded-tr-xl -mt-[2px] -mr-[2px]" />
+              <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-[var(--accent)] rounded-bl-xl -mb-[2px] -ml-[2px]" />
+              <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-[var(--accent)] rounded-br-xl -mb-[2px] -mr-[2px]" />
             </div>
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-              <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg bg-[var(--surface)] border border-[var(--border)] text-sm font-medium text-[var(--text-primary)] shadow-sm">
-                <span className="w-3.5 h-3.5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin shrink-0" />
+
+            {/* Glowing Scan Beam & Grid */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <div className="w-full h-32 bg-gradient-to-b from-transparent via-[var(--accent)]/10 to-[var(--accent)]/40 border-b-2 border-[var(--accent)] absolute animate-scanline shadow-[0_4px_15px_var(--accent)] z-10" />
+              <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] opacity-30 mix-blend-screen" />
+            </div>
+
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-20">
+              <div className="flex items-center gap-2.5 px-5 py-3 rounded-xl bg-[var(--surface)]/90 backdrop-blur-md border border-[var(--border)] text-sm font-semibold text-[var(--text-primary)] shadow-2xl shadow-black/50">
+                <span className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin shrink-0" />
                 {SCAN_STAGES[stageIdx]?.label}
               </div>
-              <div className="w-48 h-1 bg-[var(--border)] rounded-full overflow-hidden">
+              <div className="w-56 h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-md shadow-inner">
                 <div
-                  className="h-full bg-[var(--accent)] rounded-full transition-all duration-300"
+                  className="h-full bg-[var(--accent)] rounded-full transition-all duration-300 shadow-[0_0_10px_var(--accent)]"
                   style={{ width: `${progress}%` }}
                 />
               </div>
@@ -531,12 +574,16 @@ export default function ScanPage() {
         {/* ── Recent Scans Workspace ───────────────────────────────── */}
         <div className="mt-12 pt-8 border-t border-[var(--border)] animate-fadeIn">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">Recent Scans</h2>
-            {recentScans.length > 0 && (
-              <span className="text-xs font-medium text-[var(--text-tertiary)] bg-[var(--surface-raised)] px-2 py-1 rounded-md">
-                {recentScans.length} recent
-              </span>
-            )}
+            <div>
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">Recent Scans</h2>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5">Quick view of your latest 3 scans.</p>
+            </div>
+            <a 
+              href="/history"
+              className="text-sm font-medium text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors flex items-center gap-1"
+            >
+              View Smart History <ArrowRightIcon size={14} />
+            </a>
           </div>
 
           {loadingHistory ? (
@@ -544,13 +591,23 @@ export default function ScanPage() {
               <span className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : recentScans.length === 0 ? (
-            <div className="p-8 text-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] text-[var(--text-tertiary)] text-sm">
-              No recent scans. Your history will appear here.
+            <div className="p-10 text-center rounded-2xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text-tertiary)] text-sm shadow-sm">
+              <div className="w-16 h-16 bg-[var(--surface-raised)] border border-[var(--border)] rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl opacity-80">📷</span>
+              </div>
+              <h3 className="text-lg font-medium text-[var(--text-primary)] mb-2">No scans yet</h3>
+              <p className="max-w-sm mx-auto">
+                Scan your first item to see its AI classification, environmental impact, and estimated value.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {recentScans.map((scan) => (
-                <div key={scan.id} className="flex flex-col sm:flex-row gap-4 p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-strong)] transition-colors">
+              {recentScans.slice(0, 3).map((scan, index) => (
+                <div 
+                  key={scan.id} 
+                  className="flex flex-col sm:flex-row gap-4 p-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent-border)] transition-colors animate-slideUp shadow-sm"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
                   <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg overflow-hidden flex items-center justify-center">
                     {scan.thumbnail ? (
                       <img src={scan.thumbnail} alt={scan.category} className="w-full h-full object-cover" />

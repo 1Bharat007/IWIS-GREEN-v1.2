@@ -23,6 +23,8 @@ type Listing = {
   scheduledTimeSlot?: string;
 };
 
+import { demoListingsHistory } from "@/lib/demo/listings";
+
 export default function SellHistoryPage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +32,13 @@ export default function SellHistoryPage() {
 
   useEffect(() => {
     apiFetch("/listings/my")
-      .then((data) => setListings(data))
+      .then((data) => {
+        if (data.length === 0 && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+          setListings(demoListingsHistory);
+        } else {
+          setListings(data);
+        }
+      })
       .catch((err) => setError(err.message || "Failed to load history."))
       .finally(() => setLoading(false));
   }, []);
@@ -94,8 +102,12 @@ export default function SellHistoryPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {listings.map((item) => (
-              <div key={item.id} className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent-border)] transition-colors">
+            {listings.map((item, index) => (
+              <div 
+                key={item.id} 
+                className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent-border)] transition-colors animate-slideUp shadow-sm"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div>
                     <h3 className="font-semibold text-[var(--text-primary)]">

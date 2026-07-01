@@ -1,3 +1,5 @@
+import { sendSuccess } from "../utils/apiResponse.util";
+import { AppError, ValidationError, AuthenticationError, AuthorizationError, DatabaseError } from "../utils/errors";
 import { Request, Response } from "express";
 import { GoogleGenAI } from "@google/genai";
 
@@ -26,7 +28,7 @@ export const debugGemini = async (_req: Request, res: Response) => {
 
   if (!apiKey) {
     result.exactError = "GEMINI_API_KEY environment variable is not set.";
-    return res.json(result);
+    return sendSuccess(res, result);
   }
 
   try {
@@ -50,5 +52,5 @@ export const debugGemini = async (_req: Request, res: Response) => {
     }
   }
 
-  return res.json(result);
+  return sendSuccess(res, result);
 };

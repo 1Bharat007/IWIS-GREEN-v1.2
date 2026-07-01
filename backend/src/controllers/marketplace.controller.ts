@@ -1,3 +1,5 @@
+import { sendSuccess } from "../utils/apiResponse.util";
+import { AppError, ValidationError, AuthenticationError, AuthorizationError, DatabaseError } from "../utils/errors";
 import { Request, Response } from "express";
 import { getDB } from "../db";
 import { v4 as uuidv4 } from "uuid";
@@ -31,7 +33,7 @@ export const createListing = async (req: any, res: Response) => {
     // +20 Green Points for moving waste to the exchange
     await db.run("UPDATE users SET greenPoints = COALESCE(greenPoints, 0) + 20 WHERE id = ?", [userId]);
 
-    res.status(201).json({ message: "Listing created", id: listingId });
+    sendSuccess(res, { message: "Listing created", id: listingId });
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: "Failed to create listing" });
@@ -55,7 +57,7 @@ export const getListings = async (req: any, res: Response) => {
       ORDER BY l.createdAt DESC
     `);
     
-    res.json(listings);
+    sendSuccess(res, listings);
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch listings" });
@@ -87,7 +89,7 @@ export const placeBid = async (req: any, res: Response) => {
       [bidId, listingId, recyclerId, parseFloat(offerAmount), 'Pending', createdAt]
     );
 
-    res.status(201).json({ message: "Bid placed successfully", id: bidId });
+    sendSuccess(res, { message: "Bid placed successfully", id: bidId });
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: "Failed to place bid" });
@@ -122,7 +124,7 @@ export const getMyListings = async (req: any, res: Response) => {
       listing.bids = bids;
     }
 
-    res.json(listings);
+    sendSuccess(res, listings);
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch user listings" });
@@ -158,7 +160,7 @@ export const acceptBid = async (req: any, res: Response) => {
     // +50 Green Points for finalizing a Circular Economy supply chain link
     await db.run("UPDATE users SET greenPoints = COALESCE(greenPoints, 0) + 50 WHERE id = ?", [userId]);
 
-    res.json({ message: "Bid accepted successfully" });
+    sendSuccess(res, { message: "Bid accepted successfully" });
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: "Failed to accept bid" });

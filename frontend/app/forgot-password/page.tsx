@@ -3,15 +3,33 @@
 import { useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
+import { AlertIcon, LeafIcon } from "@/components/ui/Icons";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  const validate = () => {
+    let isValid = true;
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError("Please enter a valid email address.");
+      isValid = false;
+    } else {
+      setEmailError("");
+    }
+    return isValid;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
+    
     try {
       setLoading(true);
       setError("");
@@ -21,68 +39,84 @@ export default function ForgotPasswordPage() {
       });
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || "Something went wrong. Please try again.");
+      let msg = err.message || "Unable to reach our servers. Please check your connection.";
+      if (err.status >= 500) {
+        msg = "Something went wrong. Please try again.";
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-[90vh] items-center justify-center px-4 relative overflow-hidden">
-      {/* Background decorative elements */}
-      <div className="absolute top-[10%] right-[-5%] w-[40%] h-[40%] rounded-full bg-emerald-500/20 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[0%] w-[40%] h-[40%] rounded-full bg-blue-500/20 blur-[120px] pointer-events-none" />
-
-      <div className="relative w-full max-w-md animate-fadeIn z-10">
-        <div className="rounded-3xl border border-white/20 bg-white/60 p-8 shadow-[0_8px_32px_rgba(0,0,0,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-neutral-900/60 dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-
-          {/* Icon */}
-          <div className="mb-6 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-900/30">
-              <span className="text-3xl">🔑</span>
-            </div>
+    <div className="min-h-[calc(100vh-48px)] flex">
+      {/* ── Left brand panel ─────────────────────────────────── */}
+      <div className="hidden lg:flex w-[420px] shrink-0 flex-col justify-between border-r border-[var(--border)] px-10 py-12 bg-[var(--surface-raised)]">
+        <div>
+          <div className="flex items-center gap-2 mb-10">
+            <span className="w-7 h-7 rounded bg-[var(--accent)] flex items-center justify-center">
+              <span className="text-white text-xs font-bold">IW</span>
+            </span>
+            <span className="text-sm font-semibold text-[var(--text-primary)]">IWIS</span>
           </div>
+          <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3 leading-snug">
+            Secure and reliable<br />access recovery.
+          </h2>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            Get back to managing your environmental impact in just a few clicks.
+          </p>
+        </div>
 
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-white mb-2">
-              Forgot Password?
+        <div className="space-y-3">
+          <div className="flex items-center gap-2.5 text-sm text-[var(--text-secondary)]">
+            <span className="w-4 h-4 rounded-full border border-[var(--accent-border)] bg-[var(--accent-subtle)] flex items-center justify-center shrink-0">
+              <LeafIcon size={9} className="text-[var(--accent-text)]" />
+            </span>
+            Secure email verification
+          </div>
+        </div>
+      </div>
+
+      {/* ── Right form panel ─────────────────────────────────── */}
+      <div className="flex-1 flex items-center justify-center px-4 py-12 relative overflow-hidden">
+        <div className="w-full max-w-sm">
+
+          <div className="mb-7">
+            <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-1">
+              Forgot Password
             </h1>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              No worries! Enter your email and we'll send you a reset link.
+            <p className="text-sm text-[var(--text-secondary)]">
+              Enter your email and we'll send a reset link.
             </p>
           </div>
 
-          {/* Error */}
           {error && (
-            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400 flex items-center gap-3">
-              <span className="text-lg">⚠️</span>
+            <div className="mb-5 flex items-start gap-2.5 px-3.5 py-3 rounded-lg border border-[var(--destructive-border)] bg-[var(--destructive-bg)] text-sm text-[var(--destructive)] animate-in fade-in slide-in-from-top-2 duration-300">
+              <AlertIcon size={14} className="shrink-0 mt-0.5" />
               {error}
             </div>
           )}
 
-          {/* Success state */}
           {success ? (
-            <div className="text-center space-y-6">
-              <div className="mx-auto w-20 h-20 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-4xl">
+            <div className="text-center space-y-6 animate-in fade-in zoom-in-95 duration-500">
+              <div className="mx-auto w-16 h-16 rounded-full bg-[var(--accent-subtle)] border border-[var(--accent-border)] flex items-center justify-center text-2xl">
                 📬
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-neutral-900 dark:text-white mb-2">
+                <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-2">
                   Check your inbox!
                 </h2>
-                <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
                   We've sent a password reset link to{" "}
-                  <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                    {email}
-                  </span>
-                  . The link expires in 1 hour.
+                  <span className="font-medium text-[var(--text-primary)]">{email}</span>. The link expires in 1 hour.
                 </p>
               </div>
-              <p className="text-xs text-neutral-400 dark:text-neutral-500">
+              <p className="text-xs text-[var(--text-tertiary)]">
                 Didn't get it? Check your spam folder or{" "}
                 <button
                   onClick={() => setSuccess(false)}
-                  className="text-emerald-600 hover:underline dark:text-emerald-400"
+                  className="text-[var(--accent-text)] hover:underline"
                 >
                   try again
                 </button>
@@ -90,45 +124,39 @@ export default function ForgotPasswordPage() {
               </p>
               <Link
                 href="/login"
-                className="inline-block rounded-xl border border-neutral-200 dark:border-neutral-700 px-6 py-2.5 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                className="inline-block mt-4 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               >
                 ← Back to Sign In
               </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                  Email Address
-                </label>
-                <input
-                  id="reset-email"
-                  type="email"
-                  placeholder="you@example.com"
-                  required
-                  className="w-full rounded-xl border border-neutral-200 bg-white/50 px-4 py-3.5 text-sm outline-none transition-all focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-neutral-700/50 dark:bg-neutral-800/50 dark:text-white dark:focus:border-emerald-500"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+              <Input
+                label="Email Address"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) setEmailError("");
+                }}
+                error={emailError}
+                autoComplete="email"
+              />
 
-              <button
-                id="send-reset-btn"
+              <Button
                 type="submit"
-                disabled={loading}
-                className="group relative w-full overflow-hidden rounded-xl bg-neutral-900 py-3.5 text-sm font-medium text-white transition-all hover:shadow-lg hover:shadow-emerald-500/25 disabled:opacity-70 dark:bg-white dark:text-black mt-2"
+                variant="primary"
+                loading={loading}
+                className="mt-2"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  {loading ? "Sending..." : "Send Reset Link"}
-                  {!loading && <span className="transition-transform group-hover:translate-x-1">→</span>}
-                </span>
-              </button>
+                Send Reset Link
+              </Button>
 
-              <div className="text-center">
+              <div className="text-center mt-6">
                 <Link
                   href="/login"
-                  className="text-sm text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200 transition-colors"
+                  className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                 >
                   ← Back to Sign In
                 </Link>
