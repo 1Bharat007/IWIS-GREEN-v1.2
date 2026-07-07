@@ -38,7 +38,6 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [language, setLanguage] = useState("English");
 
   const [displayNameError, setDisplayNameError] = useState("");
   const [emailError, setEmailError] = useState("");
@@ -84,15 +83,12 @@ export default function SignupPage() {
           email: email.trim(),
           password,
           role,
-          displayName: displayName.trim(),
-          preferredLanguage: language
+          displayName: displayName.trim()
         }),
       });
         const data = _data.data || _data;
 
       setToken(data.token);
-      
-      sessionStorage.setItem("justLoggedIn", "true");
       
       if (role === "recycler") {
         router.push("/recycler/onboarding");
@@ -126,7 +122,6 @@ export default function SignupPage() {
         });
         const data = _data.data || _data;
         setToken(data.token);
-        sessionStorage.setItem("justLoggedIn", "true");
         if (data.requiresOnboarding) {
           router.push("/recycler/onboarding");
         } else {
@@ -184,7 +179,7 @@ export default function SignupPage() {
 
       {/* ── Right form panel ─────────────────────────────────── */}
       <div className="flex-1 flex items-center justify-center px-4 py-12 relative overflow-hidden">
-        <div className={`w-full max-w-sm transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+        <div className="w-full max-w-sm">
 
           <div className="mb-7">
             <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-1">
@@ -205,7 +200,7 @@ export default function SignupPage() {
           <Button
             variant="secondary"
             onClick={handleGoogleLogin}
-            disabled={loading}
+            loading={loading}
             className="mb-6"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -331,24 +326,11 @@ export default function SignupPage() {
               autoComplete="new-password"
             />
 
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1.5">Preferred Language</label>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="w-full px-3 py-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/15 appearance-none transition-colors"
-                aria-label="Preferred Language"
-              >
-                <option value="English">English</option>
-                <option value="हिन्दी">हिन्दी</option>
-                <option value="Dogri">Dogri</option>
-              </select>
-            </div>
-
             <Button
               type="submit"
               variant="primary"
               className="mt-2"
+              loading={loading}
             >
               Create Account
             </Button>

@@ -34,7 +34,7 @@ export const signup = async (req: Request, res: Response) => {
 
     const db = await getDB();
 
-    const isOtpEnabled = process.env.ENABLE_PHONE_OTP !== "false";
+    const isOtpEnabled = process.env.ENABLE_PHONE_OTP === "true";
 
     if (isOtpEnabled) {
       if (!phone || !otp) {

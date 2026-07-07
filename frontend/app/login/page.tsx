@@ -42,7 +42,6 @@ export default function LoginPage() {
   const [showPwd, setShowPwd] = useState(false);
 
   const redirectUser = (data: any) => {
-    sessionStorage.setItem("justLoggedIn", "true");
     if (data.role === "recycler") {
       router.push("/recycler/feed");
     } else {
@@ -59,9 +58,9 @@ export default function LoginPage() {
       }
       const result = await signInWithPopup(auth, googleProvider);
       const idToken = await result.user.getIdToken();
-      const _data = await apiFetch("/auth/google", {
+      const _data = await apiFetch("/auth/firebase-login", {
         method: "POST",
-        body: JSON.stringify({ idToken, role: "citizen" }),
+        body: JSON.stringify({ idToken }),
       });
         const data = _data.data || _data;
       setToken(data.token);
@@ -143,7 +142,7 @@ export default function LoginPage() {
 
       {/* ── Right form panel ─────────────────────────────────── */}
       <div className="flex-1 flex items-center justify-center px-4 py-12 relative overflow-hidden">
-        <div className={`w-full max-w-sm transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+        <div className="w-full max-w-sm">
 
           <div className="mb-7">
             <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-1">
@@ -164,7 +163,7 @@ export default function LoginPage() {
           <Button
             variant="secondary"
             onClick={handleGoogleLogin}
-            disabled={loading}
+            loading={loading}
             className="mb-6"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -229,6 +228,7 @@ export default function LoginPage() {
               type="submit"
               variant="primary"
               className="mt-2"
+              loading={loading}
             >
               Sign in
             </Button>
