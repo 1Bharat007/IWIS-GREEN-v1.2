@@ -25,6 +25,7 @@ export default function SellWastePage() {
 
   const [draft, setDraft, clearDraft] = useDraft("draft_sell_waste", {
     materialType: "Plastic",
+    otherMaterialName: "",
     wasteVolume: "Medium Bag",
     weight: "",
     address: "",
@@ -34,6 +35,7 @@ export default function SellWastePage() {
   });
 
   const materialType = draft.materialType;
+  const otherMaterialName = draft.otherMaterialName;
   const wasteVolume = draft.wasteVolume;
   const weight = draft.weight;
   const address = draft.address;
@@ -42,6 +44,7 @@ export default function SellWastePage() {
   const lng = draft.lng;
 
   const setMaterialType = (v: string) => setDraft({ ...draft, materialType: v });
+  const setOtherMaterialName = (v: string) => setDraft({ ...draft, otherMaterialName: v });
   const setWasteVolume = (v: string) => setDraft({ ...draft, wasteVolume: v });
   const setWeight = (v: string) => setDraft({ ...draft, weight: v });
   const setAddress = (v: string) => setDraft({ ...draft, address: v });
@@ -115,6 +118,10 @@ export default function SellWastePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (materialType === "Other" && (!otherMaterialName || !otherMaterialName.trim())) {
+      setError("Please specify the name of the waste.");
+      return;
+    }
     if (!address.trim() || (!wasteVolume && !weight)) {
       setError("Please provide a waste quantity and pickup address.");
       return;
@@ -127,7 +134,7 @@ export default function SellWastePage() {
       await apiFetch("/listings", {
         method: "POST",
         body: JSON.stringify({
-          materialType,
+          materialType: materialType === "Other" && otherMaterialName ? `Other - ${otherMaterialName.trim()}` : materialType,
           wasteVolume,
           estimatedWeightKg: weight ? parseFloat(weight) : undefined,
           pickupAddress: address.trim(),
@@ -198,6 +205,7 @@ export default function SellWastePage() {
               <button
                 onClick={() => {
                   setSuccess(false);
+                  setOtherMaterialName("");
                   setWeight("");
                   setDescription("");
                   setAddress("");
@@ -236,6 +244,21 @@ export default function SellWastePage() {
                 ))}
               </div>
             </div>
+
+            {materialType === "Other" && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
+                  Specify Waste Type
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Old batteries, Wood, Mattresses"
+                  value={otherMaterialName || ""}
+                  onChange={(e) => setOtherMaterialName(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] outline-none focus:border-[var(--accent)] transition-all"
+                />
+              </div>
+            )}
 
             {/* Volume Selection */}
             <div>
