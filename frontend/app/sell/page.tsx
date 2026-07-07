@@ -16,7 +16,8 @@ const MATERIALS = [
   "Glass",
   "Metal",
   "Organic",
-  "Mixed"
+  "Mixed",
+  "Other"
 ];
 
 export default function SellWastePage() {
