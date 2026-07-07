@@ -90,8 +90,11 @@ export const signup = async (req: Request, res: Response) => {
 
     const token = jwt.sign({ id, role }, JWT_SECRET, { expiresIn: "7d" });
     sendSuccess(res, { token, role });
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
+    if (err instanceof AppError) {
+      throw err;
+    }
     throw new DatabaseError("Signup failed");
   }
 };
@@ -269,8 +272,11 @@ export const login = async (req: Request, res: Response) => {
     }
 
     sendSuccess(res, { token, role: user.role, requiresOnboarding: user.role === 'recycler' && !isApproved });
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
+    if (err instanceof AppError) {
+      throw err;
+    }
     throw new DatabaseError("Login failed");
   }
 };

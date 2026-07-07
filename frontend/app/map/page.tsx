@@ -23,7 +23,7 @@ const MapComponent = dynamic(
 );
 
 export default function GeoMapPage() {
-  const [hotspots, setHotspots] = useState([]);
+  const [hotspots, setHotspots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("All");
 
@@ -33,7 +33,7 @@ export default function GeoMapPage() {
         const __data = await apiFetch("/waste/hotspots");
         const _data = __data.data || __data;
         const data = _data.data || _data;
-        setHotspots(data || []);
+        setHotspots(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Failed to load geographic data:", err);
       } finally {

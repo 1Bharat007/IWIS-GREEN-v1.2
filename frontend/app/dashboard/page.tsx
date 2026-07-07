@@ -22,11 +22,8 @@ interface DashboardData {
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userName, setUserName] = useState("Citizen");
   const [role, setRole] = useState("citizen");
-  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
-  
-  // Feedback Modal State
+  const [userName, setUserName] = useState("");
   const [pendingFeedbackTx, setPendingFeedbackTx] = useState<any>(null);
   const [feedbackRating, setFeedbackRating] = useState(0);
   const [feedbackComment, setFeedbackComment] = useState("");
@@ -52,21 +49,25 @@ export default function DashboardPage() {
 
         if (meRes?.name) setUserName(meRes.name.split(" ")[0]);
 
-        if (txRes && Array.isArray(txRes)) {
-          const pending = txRes.find(t => t.status === 'completed' && !t.feedbackRating && t.citizenId === meRes?.id);
+        const txList = Array.isArray(txRes) ? txRes : [];
+        if (txList.length > 0) {
+          const pending = txList.find(t => t.status === 'completed' && !t.feedbackRating && t.citizenId === meRes?.id);
           if (pending) {
             setPendingFeedbackTx(pending);
           }
         }
 
-        const activeCount = listingsRes ? listingsRes.filter((l: any) => l.status !== "completed" && l.status !== "cancelled").length : 0;
+        const listingsList = Array.isArray(listingsRes) ? listingsRes : [];
+        const activeCount = listingsList.filter((l: any) => l.status !== "completed" && l.status !== "cancelled").length;
         
+        const notifList = Array.isArray(notifRes) ? notifRes : [];
+
         let finalData: DashboardData = {
           totalEarnings: analyticsRes?.estimatedEarnings || 0,
-          totalRecycledKg: listingsRes ? listingsRes.filter((l: any) => l.status === "completed").reduce((acc: number, l: any) => acc + (l.estimatedWeightKg || 0), 0) : 0,
+          totalRecycledKg: listingsList.filter((l: any) => l.status === "completed").reduce((acc: number, l: any) => acc + (l.estimatedWeightKg || 0), 0),
           co2Saved: analyticsRes?.totalCO2 || 0,
           activeListings: activeCount,
-          recentNotifications: notifRes?.slice(0, 3) || []
+          recentNotifications: notifList.slice(0, 3)
         };
 
         if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
@@ -83,12 +84,6 @@ export default function DashboardPage() {
       }
     };
     load();
-    
-    if (sessionStorage.getItem("justLoggedIn")) {
-      setShowWelcomeBanner(true);
-      sessionStorage.removeItem("justLoggedIn");
-      setTimeout(() => setShowWelcomeBanner(false), 5000);
-    }
   }, []);
 
   const handleSubmitFeedback = async () => {
@@ -133,17 +128,6 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <div className="space-y-8 animate-fadeIn max-w-5xl mx-auto relative">
-        
-        {/* Subtle Welcome Banner */}
-        {showWelcomeBanner && (
-          <div className="absolute top-0 left-0 right-0 -mt-2 mb-4 animate-in fade-in slide-in-from-top-4 duration-500 z-10">
-            <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--accent)] text-white text-sm font-medium rounded-xl shadow-lg shadow-[var(--accent)]/20">
-              <CheckCircleIcon size={16} />
-              <span>Authentication successful. Welcome to your workspace!</span>
-            </div>
-          </div>
-        )}
-
         {/* ── Welcome Header ────────────────────────────────────── */}
         <div>
           <h1 className="text-3xl font-bold text-[var(--text-primary)]">

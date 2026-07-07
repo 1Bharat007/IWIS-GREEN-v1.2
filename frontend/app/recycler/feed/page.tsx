@@ -26,16 +26,16 @@ export default function RecyclerFeedPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
-  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
 
   const fetchListings = () => {
     setLoading(true);
     apiFetch("/listings/nearby?lat=32.7266&lng=74.8570&radiusKm=20")
-      .then((data) => {
+      .then((res: any) => {
+        const data = Array.isArray(res) ? res : (res?.data || []);
         if (data.length === 0 && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
           setListings(demoRecyclerFeed);
         } else {
-          setListings(data);
+          setListings(Array.isArray(data) ? data : []);
         }
       })
       .catch((err) => setError(err.message || "Failed to load feed."))
@@ -45,12 +45,6 @@ export default function RecyclerFeedPage() {
   useEffect(() => {
     // For MVP, we simulate sending the recycler's Jammu coordinates
     fetchListings();
-    
-    if (sessionStorage.getItem("justLoggedIn")) {
-      setShowWelcomeBanner(true);
-      sessionStorage.removeItem("justLoggedIn");
-      setTimeout(() => setShowWelcomeBanner(false), 5000);
-    }
   }, []);
 
   const handleAccept = async (id: string) => {
@@ -79,17 +73,6 @@ export default function RecyclerFeedPage() {
   return (
     <ProtectedRoute>
       <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 animate-fadeIn relative">
-        
-        {/* Subtle Welcome Banner */}
-        {showWelcomeBanner && (
-          <div className="absolute top-0 left-0 right-0 -mt-2 mb-4 animate-in fade-in slide-in-from-top-4 duration-500 z-10">
-            <div className="flex items-center gap-2.5 px-4 py-3 bg-[var(--accent)] text-white text-sm font-medium rounded-xl shadow-lg shadow-[var(--accent)]/20">
-              <span className="text-lg">✅</span>
-              <span>Authentication successful. Welcome to your workspace!</span>
-            </div>
-          </div>
-        )}
-
         <div className="mb-8 mt-2">
           <p className="text-xs font-semibold text-[var(--accent-text)] uppercase tracking-wider mb-1">
             Recycler Action

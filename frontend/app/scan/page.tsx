@@ -113,8 +113,8 @@ export default function ScanPage() {
         const __response = await apiFetch("/waste/history?limit=10");
         const _response = __response.data || __response;
         const response = _response.data || _response;
-        const data = response.data || {};
-        const history = data.history || [];
+        const data = response.data || response || {};
+        const history = Array.isArray(data.history) ? data.history : [];
         if (history.length === 0 && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
           setRecentScans(demoHistoryScans);
         } else {

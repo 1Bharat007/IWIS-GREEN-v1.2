@@ -8,7 +8,6 @@ import { setToken } from "@/lib/session";
 import { AlertIcon } from "@/components/ui/Icons";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
-import { AuthLoadingState } from "@/components/ui/AuthLoadingState";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 
@@ -144,8 +143,7 @@ export default function LoginPage() {
 
       {/* ── Right form panel ─────────────────────────────────── */}
       <div className="flex-1 flex items-center justify-center px-4 py-12 relative overflow-hidden">
-        {loading && <AuthLoadingState />}
-        <div className={`w-full max-w-sm transition-opacity duration-300 ${loading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div className={`w-full max-w-sm transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
 
           <div className="mb-7">
             <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-1">

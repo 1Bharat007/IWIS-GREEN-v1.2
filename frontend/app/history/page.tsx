@@ -55,8 +55,8 @@ export default function SmartHistoryPage() {
       const __response = await apiFetch(url);
         const _response = __response.data || __response;
         const response = _response.data || _response;
-      const data = response.data || {};
-      setScans(data.history || []);
+      const data = response.data || response || {};
+      setScans(Array.isArray(data.history) ? data.history : []);
       setTotalCount(data.totalCount || 0);
     } catch (err) {
       console.error("Failed to load smart history", err);
