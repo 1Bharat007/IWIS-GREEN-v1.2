@@ -52,10 +52,8 @@ export default function SmartHistoryPage() {
       if (currentMaterial) url += `&material=${encodeURIComponent(currentMaterial)}`;
       if (currentSort) url += `&sort=${currentSort}`;
 
-      const __response = await apiFetch(url);
-        const _response = __response.data || __response;
-        const response = _response.data || _response;
-      const data = response.data || response || {};
+      const res = await apiFetch(url);
+      const data = res?.data || res || {};
       setScans(Array.isArray(data.history) ? data.history : []);
       setTotalCount(data.totalCount || 0);
     } catch (err) {

@@ -43,14 +43,17 @@ export default function EarningsPage() {
   useEffect(() => {
     const fetchEarningsData = async () => {
       try {
-        const [sumRes, txRes, meRes] = await Promise.all([
+        const [sumRaw, txRaw, meRaw] = await Promise.all([
           apiFetch("/transactions/summary"),
           apiFetch("/transactions"),
           apiFetch("/auth/me")
         ]);
-        setSummary(sumRes);
-        setTransactions(txRes);
-        setCo2Saved(meRes.totalCO2 || 0);
+        const sumRes = sumRaw?.data || sumRaw;
+        const txRes = txRaw?.data || txRaw;
+        const meRes = meRaw?.data || meRaw;
+        setSummary(sumRes || null);
+        setTransactions(Array.isArray(txRes) ? txRes : []);
+        setCo2Saved(meRes?.totalCO2 || 0);
       } catch (err) {
         console.error("Failed to fetch earnings:", err);
       } finally {
@@ -134,11 +137,11 @@ export default function EarningsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
                 <p className="text-2xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">Total Earnings</p>
-                <p className="text-2xl font-bold text-[var(--accent-text)]">₹{summary.totalEarnings.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-[var(--accent-text)]">₹{(summary.totalEarnings || 0).toFixed(2)}</p>
               </div>
               <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
                 <p className="text-2xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">Total Recycled</p>
-                <p className="text-2xl font-bold text-[var(--text-primary)]">{summary.totalWeightRecycled.toFixed(1)} <span className="text-sm font-medium text-[var(--text-secondary)]">kg</span></p>
+                <p className="text-2xl font-bold text-[var(--text-primary)]">{(summary.totalWeightRecycled || 0).toFixed(1)} <span className="text-sm font-medium text-[var(--text-secondary)]">kg</span></p>
               </div>
               <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
                 <p className="text-2xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">Transactions</p>
@@ -203,7 +206,7 @@ export default function EarningsPage() {
                         <p className="text-sm text-[var(--text-secondary)]">{tx.finalWeightKg} kg</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-[var(--accent-text)]">₹{tx.citizenEarnings.toFixed(2)}</p>
+                        <p className="text-sm font-semibold text-[var(--accent-text)]">₹{(tx.citizenEarnings || 0).toFixed(2)}</p>
                       </div>
                       <div className="text-right flex justify-end">
                         <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--accent-subtle)] text-xs font-medium text-[var(--accent-text)]">
@@ -246,15 +249,15 @@ export default function EarningsPage() {
               <div className="border-t border-[var(--border)] pt-5 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-[var(--text-secondary)]">Gross Amount</span>
-                  <span className="text-sm text-[var(--text-primary)]">₹{selectedTx.amount.toFixed(2)}</span>
+                  <span className="text-sm text-[var(--text-primary)]">₹{(selectedTx.amount || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-[var(--text-secondary)]">Platform Fee (2%)</span>
-                  <span className="text-sm text-[var(--destructive)]">-₹{selectedTx.platformFee.toFixed(2)}</span>
+                  <span className="text-sm text-[var(--destructive)]">-₹{(selectedTx.platformFee || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-[var(--border)]">
                   <span className="text-sm font-semibold text-[var(--text-primary)]">Net Earnings</span>
-                  <span className="text-lg font-bold text-[var(--accent-text)]">₹{selectedTx.citizenEarnings.toFixed(2)}</span>
+                  <span className="text-lg font-bold text-[var(--accent-text)]">₹{(selectedTx.citizenEarnings || 0).toFixed(2)}</span>
                 </div>
               </div>
               <div className="border-t border-[var(--border)] pt-5 space-y-3">

@@ -30,10 +30,9 @@ export default function GeoMapPage() {
   useEffect(() => {
     const loadMapData = async () => {
       try {
-        const __data = await apiFetch("/waste/hotspots");
-        const _data = __data.data || __data;
-        const data = _data.data || _data;
-        setHotspots(Array.isArray(data) ? data : []);
+        const res = await apiFetch("/waste/hotspots");
+        const raw = res?.data || res;
+        setHotspots(Array.isArray(raw) ? raw : []);
       } catch (err) {
         console.error("Failed to load geographic data:", err);
       } finally {

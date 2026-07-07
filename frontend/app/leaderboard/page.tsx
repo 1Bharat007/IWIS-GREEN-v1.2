@@ -18,7 +18,10 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     apiFetch("/waste/leaderboard")
-      .then((d) => setLeaders(d))
+      .then((res) => {
+        const raw = res?.data || res;
+        setLeaders(Array.isArray(raw) ? raw : []);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -114,7 +117,7 @@ export default function LeaderboardPage() {
 
                     {/* CO₂ */}
                     <div className="col-span-4 sm:col-span-2 text-right text-sm font-semibold text-[var(--accent-text)]">
-                      {leader.totalCO2.toFixed(1)}
+                      {(leader.totalCO2 || 0).toFixed(1)}
                       <span className="text-xs font-normal text-[var(--text-tertiary)] ml-0.5">kg</span>
                     </div>
                   </div>

@@ -20,7 +20,7 @@ export default function ScheduleCollectionPage() {
 
   useEffect(() => {
     apiFetch(`/listings/${id}`)
-      .then((data) => setListing(data))
+      .then((res) => setListing(res?.data || res))
       .catch((err) => setError(err.message))
       .finally(() => setFetching(false));
   }, [id]);

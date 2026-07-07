@@ -47,7 +47,8 @@ export default function DashboardPage() {
           apiFetch("/transactions").then(r => r.data || r).catch(() => [])
         ]);
 
-        if (meRes?.name) setUserName(meRes.name.split(" ")[0]);
+        const userName = meRes?.displayName || meRes?.name || "";
+        if (userName) setUserName(userName.split(" ")[0]);
 
         const txList = Array.isArray(txRes) ? txRes : [];
         if (txList.length > 0) {

@@ -82,7 +82,10 @@ export default function Navbar() {
     
     if (hasToken) {
       apiFetch("/notifications")
-        .then(data => setNotifications(data))
+        .then(res => {
+          const list = res?.data || res;
+          setNotifications(Array.isArray(list) ? list : []);
+        })
         .catch(() => {});
     }
   }, [pathname]);

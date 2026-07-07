@@ -40,15 +40,13 @@ export default function MarketplacePage() {
     setLoading(true);
     try {
       if (activeTab === "Feed") {
-        const __data = await apiFetch("/marketplace");
-        const _data = __data.data || __data;
-        const data = _data.data || _data;
-        setFeed(data);
+        const res = await apiFetch("/marketplace");
+        const raw = res?.data || res;
+        setFeed(Array.isArray(raw) ? raw : []);
       } else {
-        const __data = await apiFetch("/marketplace/my-listings");
-        const _data = __data.data || __data;
-        const data = _data.data || _data;
-        setMyListings(data);
+        const res = await apiFetch("/marketplace/my-listings");
+        const raw = res?.data || res;
+        setMyListings(Array.isArray(raw) ? raw : []);
       }
     } catch (err) {
       console.error(err);
@@ -131,7 +129,7 @@ export default function MarketplacePage() {
                   </div>
                   
                   <div className="space-y-2 mb-6 flex-1">
-                    <p className="text-sm text-neutral-500">Listed by <span className="text-neutral-900 dark:text-white font-medium">{listing.ownerEmail.split('@')[0]}</span></p>
+                    <p className="text-sm text-neutral-500">Listed by <span className="text-neutral-900 dark:text-white font-medium">{(listing.ownerEmail || 'User').split('@')[0]}</span></p>
                     <p className="text-sm text-neutral-600 dark:text-neutral-400 flex justify-between">
                       <span>Carbon Value:</span>
                       <span className="font-mono">{listing.co2} kg CO₂e</span>
@@ -178,7 +176,7 @@ export default function MarketplacePage() {
                     <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">
                       {listing.category}
                     </span>
-                    <h3 className="font-medium text-lg mt-2">Listing Reference: <span className="font-mono text-sm">{listing.listingId.split('-')[0]}</span></h3>
+                    <h3 className="font-medium text-lg mt-2">Listing Reference: <span className="font-mono text-sm">{(listing.listingId || '').split('-')[0]}</span></h3>
                     <div className="text-sm text-neutral-500 space-y-1">
                       <p>Expected Value: ₹{listing.priceRange}</p>
                       <p>Impact: {listing.co2} kg CO₂e Saved</p>

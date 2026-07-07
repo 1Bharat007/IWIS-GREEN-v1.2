@@ -32,11 +32,13 @@ export default function SellHistoryPage() {
 
   useEffect(() => {
     apiFetch("/listings/my")
-      .then((data) => {
-        if (data.length === 0 && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
+      .then((res) => {
+        const raw = res?.data || res;
+        const list = Array.isArray(raw) ? raw : [];
+        if (list.length === 0 && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
           setListings(demoListingsHistory);
         } else {
-          setListings(data);
+          setListings(list);
         }
       })
       .catch((err) => setError(err.message || "Failed to load history."))

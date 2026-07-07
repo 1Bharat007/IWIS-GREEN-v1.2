@@ -25,8 +25,9 @@ export default function ProfilePage() {
 
   useEffect(() => {
     apiFetch("/auth/me")
-      .then((data) => {
-        setProfile(data);
+      .then((res) => {
+        const data = res?.data || res;
+        setProfile(data || null);
       })
       .catch(() => {
         // Handle error quietly

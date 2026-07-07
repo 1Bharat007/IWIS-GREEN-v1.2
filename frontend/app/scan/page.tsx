@@ -110,10 +110,8 @@ export default function ScanPage() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const __response = await apiFetch("/waste/history?limit=10");
-        const _response = __response.data || __response;
-        const response = _response.data || _response;
-        const data = response.data || response || {};
+        const res = await apiFetch("/waste/history?limit=10");
+        const data = res?.data || res || {};
         const history = Array.isArray(data.history) ? data.history : [];
         if (history.length === 0 && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
           setRecentScans(demoHistoryScans);
@@ -245,8 +243,7 @@ export default function ScanPage() {
           method: "POST",
           body: JSON.stringify({ image: base64, thumbnail, lat, lng }),
         });
-        const response = _response.data || _response;
-        const data = response.data; // Explicit unwrapping as per Phase 2 standardization
+        const data = _response?.data || _response;
         
         const tApiTotal = performance.now() - tUploadStart;
         
