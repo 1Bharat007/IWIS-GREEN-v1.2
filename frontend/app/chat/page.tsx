@@ -6,6 +6,7 @@ import { getToken } from "@/lib/session";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import { useTasks } from "@/components/providers/TaskProvider";
 import { BotIcon, ArrowRightIcon, LeafIcon, SendIcon, AlertIcon } from "@/components/ui/Icons";
+import { motion } from "framer-motion";
 
 type Message = {
   id: string;
@@ -229,7 +230,7 @@ export default function ChatPage() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-5xl mx-auto flex h-[calc(100vh-100px)] border border-[var(--border)] rounded-xl overflow-hidden bg-[var(--surface)] animate-fadeIn shadow-sm">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="max-w-5xl mx-auto flex h-[calc(100vh-100px)] border border-[var(--border)] rounded-xl overflow-hidden bg-[var(--surface)] shadow-sm">
         
         {/* Sidebar */}
         <div className="hidden md:flex w-64 flex-col border-r border-[var(--border)] bg-[var(--surface-raised)]">
@@ -410,7 +411,7 @@ export default function ChatPage() {
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     </ProtectedRoute>
   );
 }

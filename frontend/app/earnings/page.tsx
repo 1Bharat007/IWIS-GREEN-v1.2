@@ -10,6 +10,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 type Summary = {
   totalEarnings: number;
@@ -78,9 +79,9 @@ export default function EarningsPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <div className="flex items-center justify-center min-h-[50vh]">
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-center min-h-[50vh]">
           <span className="w-6 h-6 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-        </div>
+        </motion.div>
       </ProtectedRoute>
     );
   }
@@ -89,7 +90,7 @@ export default function EarningsPage() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6 animate-fadeIn space-y-8">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="max-w-5xl mx-auto py-8 px-4 sm:px-6 space-y-8">
         
         {/* Header */}
         <div>
@@ -196,7 +197,12 @@ export default function EarningsPage() {
                       className="grid grid-cols-5 md:grid-cols-6 gap-4 p-4 items-center hover:bg-[var(--surface-raised)] cursor-pointer transition-colors"
                     >
                       <div className="col-span-2">
-                        <p className="text-sm font-medium text-[var(--text-primary)]">{tx.material}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-medium text-[var(--text-primary)]">{tx.material}</p>
+                          <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded border border-[var(--border)] bg-[var(--surface-raised)] text-[var(--text-secondary)]">
+                            {tx.paymentMethod === 'upi' ? '📱 UPI' : '💵 Cash'}
+                          </span>
+                        </div>
                         <p className="text-xs text-[var(--text-tertiary)]">{new Date(tx.createdAt).toLocaleDateString()}</p>
                       </div>
                       <div className="hidden md:block">
@@ -221,7 +227,6 @@ export default function EarningsPage() {
             </div>
           </>
         )}
-      </div>
 
       {/* Transaction Detail Modal */}
       {selectedTx && (
@@ -262,6 +267,12 @@ export default function EarningsPage() {
               </div>
               <div className="border-t border-[var(--border)] pt-5 space-y-3">
                 <div className="flex justify-between items-center">
+                  <span className="text-xs text-[var(--text-tertiary)]">Payment Method</span>
+                  <span className="text-xs font-semibold text-[var(--text-primary)] uppercase flex items-center gap-1">
+                    {selectedTx.paymentMethod === 'upi' ? '📱 UPI Transfer' : '💵 Cash Payout'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
                   <span className="text-xs text-[var(--text-tertiary)]">Pickup Date</span>
                   <span className="text-xs text-[var(--text-secondary)]">{new Date(selectedTx.createdAt).toLocaleString()}</span>
                 </div>
@@ -279,6 +290,7 @@ export default function EarningsPage() {
           </div>
         </div>
       )}
+      </motion.div>
     </ProtectedRoute>
   );
 }

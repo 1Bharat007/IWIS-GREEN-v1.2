@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import { apiFetch } from "@/lib/api";
 import { ArrowRightIcon, AlertIcon } from "@/components/ui/Icons";
+import { motion } from "framer-motion";
 
 export default function ScheduleCollectionPage() {
   const params = useParams();
@@ -66,7 +67,7 @@ export default function ScheduleCollectionPage() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-xl mx-auto py-8 px-4 sm:px-6 animate-fadeIn">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="max-w-xl mx-auto py-8 px-4 sm:px-6">
         <div className="mb-6">
           <p className="text-xs font-semibold text-[var(--accent-text)] uppercase tracking-wider mb-1">
             Step 1 of 2
@@ -151,7 +152,7 @@ export default function ScheduleCollectionPage() {
             )}
           </button>
         </form>
-      </div>
+      </motion.div>
     </ProtectedRoute>
   );
 }

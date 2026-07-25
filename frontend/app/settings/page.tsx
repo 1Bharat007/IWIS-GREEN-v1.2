@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
+import { apiFetch } from "@/lib/api";
 import {
   SettingsIcon,
   CheckCircleIcon,
@@ -12,17 +13,51 @@ import {
   ArrowRightIcon,
   ExternalLinkIcon,
   MoonIcon,
-  SunIcon
+  SunIcon,
+  UserIcon
 } from "@/components/ui/Icons";
+import { motion } from "framer-motion";
 
 export default function SettingsPage() {
   const { theme, setTheme, systemTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [upiId, setUpiId] = useState("");
+  const [savingUpi, setSavingUpi] = useState(false);
+  const [upiSuccess, setUpiSuccess] = useState("");
+  const [upiError, setUpiError] = useState("");
 
   // useEffect only runs on the client, so now we can safely show the UI
   useEffect(() => {
     setMounted(true);
+    apiFetch("/auth/me")
+      .then((res) => {
+        if (res?.upiId) setUpiId(res.upiId);
+      })
+      .catch(() => {});
   }, []);
+
+  const handleSaveUpi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpiError("");
+    setUpiSuccess("");
+    const trimmed = upiId.trim();
+    if (trimmed && !/^[\w.\-]{2,256}@[a-zA-Z]{2,64}$/.test(trimmed)) {
+      setUpiError("Invalid UPI ID format (e.g., name@upi or phone@ybl).");
+      return;
+    }
+    try {
+      setSavingUpi(true);
+      await apiFetch("/auth/profile", {
+        method: "PATCH",
+        body: JSON.stringify({ upiId: trimmed }),
+      });
+      setUpiSuccess("UPI ID updated successfully.");
+    } catch (err: any) {
+      setUpiError(err.backendMessage || err.message || "Failed to update UPI ID.");
+    } finally {
+      setSavingUpi(false);
+    }
+  };
 
   const handleDownloadData = () => {
     alert("Data download request submitted. You will receive an email shortly.");
@@ -37,7 +72,7 @@ export default function SettingsPage() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-3xl mx-auto py-8 animate-fadeIn">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="max-w-3xl mx-auto py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">Account Settings</h1>
           <p className="text-sm text-[var(--text-secondary)]">Manage your preferences and privacy settings.</p>
@@ -96,7 +131,50 @@ export default function SettingsPage() {
             </div>
           </section>
 
-          {/* ── DATA & PRIVACY ── */}
+          {/* ── PAYMENTS & PAYOUT ── */}
+          <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-sm">
+            <div className="p-5 border-b border-[var(--border)]">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                <UserIcon size={18} className="text-[var(--text-secondary)]" />
+                Payout & UPI Settings
+              </h2>
+            </div>
+            <div className="p-5">
+              <form onSubmit={handleSaveUpi} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">
+                    UPI ID (VPA)
+                  </label>
+                  <p className="text-xs text-[var(--text-secondary)] mb-3">
+                    Save your Virtual Payment Address (e.g. username@upi or mobile@ybl) to receive direct P2P payments from recyclers.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="text"
+                      placeholder="e.g. alex@okicici or 9876543210@ybl"
+                      value={upiId}
+                      onChange={(e) => setUpiId(e.target.value)}
+                      className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent)] transition-colors"
+                    />
+                    <button
+                      type="submit"
+                      disabled={savingUpi}
+                      className="px-5 py-2.5 rounded-xl bg-[var(--text-primary)] text-[var(--bg)] text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+                    >
+                      {savingUpi ? "Saving..." : "Save UPI ID"}
+                    </button>
+                  </div>
+                </div>
+
+                {upiSuccess && (
+                  <p className="text-xs font-medium text-green-600 dark:text-green-400 mt-2">{upiSuccess}</p>
+                )}
+                {upiError && (
+                  <p className="text-xs font-medium text-[var(--destructive)] mt-2">{upiError}</p>
+                )}
+              </form>
+            </div>
+          </section>
           <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-sm">
             <div className="p-5 border-b border-[var(--border)]">
               <h2 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
@@ -154,7 +232,7 @@ export default function SettingsPage() {
           </section>
 
         </div>
-      </div>
+      </motion.div>
     </ProtectedRoute>
   );
 }

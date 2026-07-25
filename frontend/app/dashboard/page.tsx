@@ -10,6 +10,7 @@ import {
   ArrowRightIcon, CheckCircleIcon, HistoryIcon 
 } from "@/components/ui/Icons";
 import { demoDashboardData } from "@/lib/demo/dashboard";
+import { motion } from "framer-motion";
 
 interface DashboardData {
   totalEarnings: number;
@@ -113,9 +114,9 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <div className="flex items-center justify-center min-h-[50vh]">
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="flex items-center justify-center min-h-[50vh]">
           <span className="w-6 h-6 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-        </div>
+        </motion.div>
       </ProtectedRoute>
     );
   }
@@ -128,7 +129,7 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-8 animate-fadeIn max-w-5xl mx-auto relative">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="space-y-8 max-w-5xl mx-auto relative">
         {/* ── Welcome Header ────────────────────────────────────── */}
         <div>
           <h1 className="text-3xl font-bold text-[var(--text-primary)]">
@@ -249,8 +250,6 @@ export default function DashboardPage() {
           )}
         </div>
 
-      </div>
-
       {/* Feedback Modal */}
       {pendingFeedbackTx && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 animate-fadeIn backdrop-blur-sm">
@@ -298,6 +297,7 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+      </motion.div>
     </ProtectedRoute>
   );
 }

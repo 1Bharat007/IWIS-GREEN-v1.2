@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/api";
 import { AlertIcon, ArrowRightIcon, CheckCircleIcon, HistoryIcon, MapPinIcon } from "@/components/ui/Icons";
 import { useDraft } from "@/hooks/useDraft";
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 const MATERIALS = [
   "Plastic",
@@ -156,7 +157,7 @@ export default function SellWastePage() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-xl mx-auto py-8 px-4 sm:px-6 animate-fadeIn">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="max-w-xl mx-auto py-8 px-4 sm:px-6">
         <div className="mb-8">
           <p className="text-xs font-semibold text-[var(--accent-text)] uppercase tracking-wider mb-1">
             Citizen Action
@@ -384,7 +385,7 @@ export default function SellWastePage() {
           </button>
         </form>
         )}
-      </div>
+      </motion.div>
     </ProtectedRoute>
   );
 }

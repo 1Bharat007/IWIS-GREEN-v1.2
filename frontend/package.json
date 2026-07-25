@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "firebase": "^12.15.0",
+    "@clerk/nextjs": "^7.6.1",
     "framer-motion": "^12.34.0",
     "leaflet": "^1.9.4",
     "leaflet-defaulticon-compatibility": "^0.1.2",
@@ -32,6 +32,7 @@
     "ffmpeg-static": "^5.3.0",
     "playwright": "^1.61.1",
     "postcss": "^8.5.6",
+    "sharp": "^0.35.3",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.9.3"
   }

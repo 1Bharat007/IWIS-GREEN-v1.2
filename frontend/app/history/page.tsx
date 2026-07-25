@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
+import { motion } from "framer-motion";
 import { apiFetch } from "@/lib/api";
 import { ArrowRightIcon, RefreshIcon, CheckIcon } from "@/components/ui/Icons";
 
@@ -151,7 +152,7 @@ export default function SmartHistoryPage() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 animate-fadeIn">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Smart History</h1>
@@ -222,7 +223,7 @@ export default function SmartHistoryPage() {
             </button>
           </div>
         )}
-      </div>
+      </motion.div>
     </ProtectedRoute>
   );
 }

@@ -193,7 +193,7 @@ export const getListing = async (req: any, res: Response) => {
     const { id } = req.params;
     const db = await getDB();
     const listing = await db.get(
-      `SELECT wl.*, u.displayName as citizenName, u.phone as citizenPhone 
+      `SELECT wl.*, u.displayName as citizenName, u.phone as citizenPhone, u.upiId as citizenUpiId 
        FROM waste_listings wl 
        LEFT JOIN users u ON wl.citizenId = u.id 
        WHERE wl.id = ?`,
@@ -286,6 +286,8 @@ export const confirmPickup = async (req: any, res: Response) => {
       [citizenEarnings, listing.citizenId]
     );
 
+    const citizenUser = await db.get("SELECT displayName, upiId FROM users WHERE id = ?", listing.citizenId);
+
     // Notify citizen
     await createNotification(
       listing.citizenId,
@@ -298,7 +300,14 @@ export const confirmPickup = async (req: any, res: Response) => {
       `A ${paymentMethod === 'upi' ? 'UPI' : 'cash'} payment of ₹${citizenEarnings.toFixed(2)} was recorded for your listing.`
     );
 
-    sendSuccess(res, { message: "Pickup confirmed and transaction generated." });
+    sendSuccess(res, {
+      message: "Pickup confirmed and transaction generated.",
+      txId,
+      amount: totalAmount,
+      citizenEarnings,
+      citizenName: citizenUser?.displayName || "Citizen",
+      citizenUpiId: citizenUser?.upiId || null
+    });
   } catch (err) {
     console.error("[confirmPickup] error:", err);
     throw new DatabaseError("Failed to confirm pickup.");

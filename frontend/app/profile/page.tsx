@@ -14,12 +14,12 @@ import {
   InfoIcon,
   LeafIcon
 } from "@/components/ui/Icons";
-import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
-import { clearToken } from "@/lib/session";
+import { useClerk } from "@clerk/nextjs";
+import { motion } from "framer-motion";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { signOut } = useClerk();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -37,15 +37,10 @@ export default function ProfilePage() {
       });
   }, []);
 
-  const handleLogout = () => {
-    try {
-      if (auth) {
-        signOut(auth).catch(() => {});
-      }
-    } catch { /* ignore */ }
-    clearToken();
+  const handleLogout = async () => {
     localStorage.removeItem("iwis-user");
     localStorage.removeItem("iwis-impact");
+    await signOut();
     router.push("/login");
   };
 
@@ -72,7 +67,7 @@ export default function ProfilePage() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-2xl mx-auto space-y-8 animate-fadeIn pb-20">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="max-w-2xl mx-auto space-y-8 pb-20">
         
         {/* ── IDENTITY SECTION ── */}
         <section className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 shadow-sm relative overflow-hidden">
@@ -195,7 +190,7 @@ export default function ProfilePage() {
           </div>
         </section>
 
-      </div>
+      </motion.div>
     </ProtectedRoute>
   );
 }

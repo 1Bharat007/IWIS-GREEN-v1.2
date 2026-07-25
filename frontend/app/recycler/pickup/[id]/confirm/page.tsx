@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import { apiFetch } from "@/lib/api";
 import { ArrowRightIcon, AlertIcon, CheckIcon } from "@/components/ui/Icons";
+import { motion } from "framer-motion";
 
 export default function ConfirmPickupPage() {
   const params = useParams();
@@ -18,6 +19,12 @@ export default function ConfirmPickupPage() {
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [confirmedTx, setConfirmedTx] = useState<{
+    citizenEarnings: number;
+    citizenName: string;
+    citizenUpiId: string | null;
+    paymentMethod: string;
+  } | null>(null);
 
   useEffect(() => {
     apiFetch(`/listings/${id}`)
@@ -28,15 +35,25 @@ export default function ConfirmPickupPage() {
 
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (paymentMethod === "upi" && !listing?.citizenUpiId) {
+      setError("Citizen hasn't added a UPI ID — use cash.");
+      return;
+    }
     try {
       setLoading(true);
       setError("");
-      await apiFetch(`/listings/${id}/confirm`, {
+      const res = await apiFetch(`/listings/${id}/confirm`, {
         method: "POST",
         body: JSON.stringify({ 
           actualWeightKg: parseFloat(actualWeight),
           paymentMethod 
         }),
+      });
+      setConfirmedTx({
+        citizenEarnings: res?.citizenEarnings ?? 0,
+        citizenName: res?.citizenName || listing?.citizenName || "Citizen",
+        citizenUpiId: res?.citizenUpiId || listing?.citizenUpiId || null,
+        paymentMethod
       });
       setSuccess(true);
     } catch (err: any) {
@@ -57,16 +74,43 @@ export default function ConfirmPickupPage() {
   }
 
   if (success) {
+    const isUpi = confirmedTx?.paymentMethod === "upi" && confirmedTx?.citizenUpiId;
+    const upiUrl = isUpi
+      ? `upi://pay?pa=${confirmedTx.citizenUpiId}&pn=${encodeURIComponent(confirmedTx.citizenName)}&am=${confirmedTx.citizenEarnings.toFixed(2)}&cu=INR&tn=IWIS%20Pickup%20Payment`
+      : "";
+
     return (
       <ProtectedRoute>
-        <div className="max-w-md mx-auto py-20 px-4 text-center animate-fadeIn">
+        <div className="max-w-md mx-auto py-16 px-4 text-center animate-fadeIn">
           <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckIcon size={40} className="text-green-500" />
           </div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-2">Collection Complete!</h1>
-          <p className="text-[var(--text-secondary)] mb-8">
-            The transaction has been logged and the citizen's account has been updated.
+          <p className="text-sm text-[var(--text-secondary)] mb-6">
+            The transaction has been logged server-side. Final payout calculated: <strong className="text-[var(--text-primary)]">₹{confirmedTx?.citizenEarnings.toFixed(2)}</strong>.
           </p>
+
+          {isUpi ? (
+            <div className="mb-6 p-5 rounded-2xl bg-[var(--surface-raised)] border border-[var(--border)] space-y-3">
+              <p className="text-xs text-[var(--text-secondary)]">
+                Recipient: <strong className="text-[var(--text-primary)]">{confirmedTx.citizenName}</strong> ({confirmedTx.citizenUpiId})
+              </p>
+              <button
+                onClick={() => { window.location.href = upiUrl; }}
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold text-sm shadow-sm transition-all flex items-center justify-center gap-2"
+              >
+                Pay ₹{confirmedTx.citizenEarnings.toFixed(2)} via UPI
+              </button>
+              <p className="text-[11px] text-[var(--text-tertiary)]">
+                Tapping opens your installed UPI app (GPay, PhonePe, Paytm).
+              </p>
+            </div>
+          ) : (
+            <div className="mb-6 p-4 rounded-xl bg-[var(--surface-raised)] border border-[var(--border)] text-xs text-[var(--text-secondary)]">
+              Cash payment recorded. Please hand over <strong>₹{confirmedTx?.citizenEarnings.toFixed(2)}</strong> to {confirmedTx?.citizenName || "the citizen"}.
+            </div>
+          )}
+
           <button
             onClick={() => router.push("/recycler/feed")}
             className="w-full py-3.5 rounded-xl bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--text-primary)] font-medium hover:bg-[var(--surface)] transition-all"
@@ -80,7 +124,7 @@ export default function ConfirmPickupPage() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-xl mx-auto py-8 px-4 sm:px-6 animate-fadeIn">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="max-w-xl mx-auto py-8 px-4 sm:px-6">
         <div className="mb-6">
           <p className="text-xs font-semibold text-[var(--accent-text)] uppercase tracking-wider mb-1">
             Step 2 of 2
@@ -139,12 +183,18 @@ export default function ConfirmPickupPage() {
                   📱 Paid via UPI
                 </label>
               </div>
+              {paymentMethod === 'upi' && !listing?.citizenUpiId && (
+                <p className="mt-2.5 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 font-medium">
+                  <AlertIcon size={14} />
+                  Citizen hasn't added a UPI ID — use cash
+                </p>
+              )}
             </div>
           </div>
 
           <button
             type="submit"
-            disabled={loading || !actualWeight}
+            disabled={loading || !actualWeight || (paymentMethod === "upi" && !listing?.citizenUpiId)}
             className="w-full flex items-center justify-center gap-2 py-4 px-4 rounded-xl bg-[var(--text-primary)] text-[var(--bg)] text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-all shadow-sm"
           >
             {loading ? (
@@ -160,7 +210,7 @@ export default function ConfirmPickupPage() {
             )}
           </button>
         </form>
-      </div>
+      </motion.div>
     </ProtectedRoute>
   );
 }

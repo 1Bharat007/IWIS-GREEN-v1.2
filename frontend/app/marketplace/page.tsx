@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
+import { motion } from "framer-motion";
 
 type Listing = {
   listingId: string;
@@ -89,7 +90,7 @@ export default function MarketplacePage() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-6xl mx-auto space-y-8">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="max-w-6xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
           <h1 className="text-4xl font-semibold tracking-tight">Circular Exchange</h1>
           <div className="flex bg-neutral-100 dark:bg-neutral-800 p-1 rounded-xl">
@@ -218,7 +219,7 @@ export default function MarketplacePage() {
             )}
           </div>
         )}
-      </div>
+      </motion.div>
     </ProtectedRoute>
   );
 }

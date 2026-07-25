@@ -1,28 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import { clearToken, getToken } from "@/lib/session";
+import { useAuth, useUser, UserButton } from "@clerk/nextjs";
 import {
   MenuIcon, XIcon, ScanIcon, LayoutIcon, HistoryIcon,
-  BotIcon, SettingsIcon, LogOutIcon, UserIcon, SunIcon, MoonIcon, BarChartIcon, InfoIcon, BellIcon
+  BotIcon, SettingsIcon, UserIcon, SunIcon, MoonIcon, BarChartIcon, InfoIcon, BellIcon
 } from "@/components/ui/Icons";
 import { apiFetch } from "@/lib/api";
-import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
-
-function getRoleFromToken(): string | null {
-  try {
-    const token = typeof window !== "undefined" ? localStorage.getItem("iwis_token") : null;
-    if (!token) return null;
-    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    return payload.role || "citizen";
-  } catch {
-    return null;
-  }
-}
 
 const CITIZEN_NAV = [
   { name: "Home",        path: "/dashboard",    Icon: LayoutIcon },
@@ -42,45 +29,29 @@ const PUBLIC_NAV = [
 ];
 
 export default function Navbar() {
-  const pathname  = usePathname();
-  const router    = useRouter();
+  const pathname = usePathname();
+  const { isSignedIn, isLoaded } = useAuth();
+  const { user } = useUser();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [userOpen,   setUserOpen]   = useState(false);
-  const [authed,     setAuthed]     = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [userRole,   setUserRole]   = useState<string | null>(null);
-  const userRef = useRef<HTMLDivElement>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + "/");
 
-  const handleLogout = () => {
-    try {
-      const token = getToken();
-      if (token) {
-        const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-        const userId = payload.id || payload.sub || "unknown";
-        localStorage.removeItem(`ecobot_threads_${userId}`);
-      }
-    } catch { /* best-effort */ }
-    clearToken();
-    localStorage.removeItem("iwis-user");
-    localStorage.removeItem("iwis-impact");
-    if (auth) {
-      signOut(auth).catch(() => {});
-    }
-    setUserOpen(false);
-    router.push("/login");
-  };
-
   useEffect(() => {
-    const hasToken = !!getToken();
-    setAuthed(hasToken);
-    setUserRole(hasToken ? getRoleFromToken() : null);
-    
-    if (hasToken) {
+    if (isSignedIn) {
+      apiFetch("/auth/me")
+        .then(res => {
+          const data = res?.data || res;
+          if (data?.role) {
+            setUserRole(data.role);
+          }
+        })
+        .catch(() => {});
+
       apiFetch("/notifications")
         .then(res => {
           const list = res?.data || res;
@@ -88,19 +59,16 @@ export default function Navbar() {
         })
         .catch(() => {});
     }
-  }, [pathname]);
+  }, [isSignedIn, pathname]);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
-  
+
   const toggleTheme = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark");
   };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (userRef.current && !userRef.current.contains(e.target as Node)) {
-        setUserOpen(false);
-      }
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setNotifOpen(false);
       }
@@ -125,7 +93,7 @@ export default function Navbar() {
 
   const unreadCount = notifications.filter(n => n.isRead === 0).length;
 
-  const currentNav = authed 
+  const currentNav = isSignedIn 
     ? (userRole === "recycler" ? RECYCLER_NAV : CITIZEN_NAV)
     : PUBLIC_NAV;
 
@@ -148,7 +116,7 @@ export default function Navbar() {
           {/* Primary nav — desktop */}
           <div className="hidden md:flex items-center gap-1 flex-1">
             {currentNav.map(({ name, path, Icon }) => {
-              const active = isActive(path) && path !== "/"; // avoid everything matching /
+              const active = isActive(path) && path !== "/";
               const isExactRoot = pathname === "/" && path === "/";
               const match = active || isExactRoot;
               
@@ -169,20 +137,20 @@ export default function Navbar() {
             })}
           </div>
 
-          {/* Right: user + mobile toggle */}
+          {/* Right: theme + notifications + user */}
           <div className="flex items-center gap-2 shrink-0">
             
             {/* Theme Toggle */}
-              <button
-                onClick={toggleTheme}
-                className="flex items-center justify-center w-11 h-11 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors"
-                aria-label="Toggle dark mode"
-              >
-                {resolvedTheme === "dark" ? <SunIcon size={15} /> : <MoonIcon size={15} />}
-              </button>
+            <button
+              onClick={toggleTheme}
+              className="flex items-center justify-center w-11 h-11 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors"
+              aria-label="Toggle dark mode"
+            >
+              {resolvedTheme === "dark" ? <SunIcon size={15} /> : <MoonIcon size={15} />}
+            </button>
 
             {/* Notification Bell */}
-            {authed && (
+            {isSignedIn && (
               <div className="relative" ref={notifRef}>
                 <button
                   onClick={() => setNotifOpen(!notifOpen)}
@@ -235,83 +203,47 @@ export default function Navbar() {
               </div>
             )}
 
-            {/* User menu — desktop */}
-            <div className="hidden md:block relative" ref={userRef}>
-              <button
-                onClick={() => setUserOpen(!userOpen)}
-                className="flex items-center justify-center w-11 h-11 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors"
-              >
-                <span className="w-7 h-7 rounded-full bg-[var(--surface-raised)] border border-[var(--border)] flex items-center justify-center">
-                  <UserIcon size={14} />
-                </span>
-              </button>
-
-              {userOpen && (
-                <div className="animate-slideDown absolute right-0 mt-1 w-44 rounded-lg border border-[var(--border)] bg-[var(--surface)] shadow-md py-1 text-sm">
-                  {authed ? (
-                    <>
-                      <Link
+            {/* User Avatar / Button — desktop */}
+            {isLoaded && (
+              <div className="hidden md:flex items-center gap-2">
+                {isSignedIn ? (
+                  <UserButton>
+                    <UserButton.MenuItems>
+                      <UserButton.Link
+                        label="Profile"
+                        labelIcon={<UserIcon size={13} />}
                         href="/profile"
-                        onClick={() => setUserOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors"
-                      >
-                        <UserIcon size={13} />
-                        Profile
-                      </Link>
-                      <Link
+                      />
+                      <UserButton.Link
+                        label="Settings"
+                        labelIcon={<SettingsIcon size={13} />}
                         href="/settings"
-                        onClick={() => setUserOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors"
-                      >
-                        <SettingsIcon size={13} />
-                        Settings
-                      </Link>
-                      <Link
+                      />
+                      <UserButton.Link
+                        label="EcoBot"
+                        labelIcon={<BotIcon size={13} />}
                         href="/chat"
-                        onClick={() => setUserOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors"
-                      >
-                        <BotIcon size={13} />
-                        EcoBot
-                      </Link>
-                      <Link
-                        href="/chat"
-                        onClick={() => setUserOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors"
-                      >
-                        <InfoIcon size={13} />
-                        Help
-                      </Link>
-                      <div className="my-1 border-t border-[var(--border)]" />
-                      <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-2.5 w-full px-3 py-2 text-[var(--destructive)] hover:bg-[var(--surface-raised)] transition-colors"
-                      >
-                        <LogOutIcon size={13} />
-                        Sign out
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <Link
-                        href="/login"
-                        onClick={() => setUserOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors"
-                      >
-                        Sign in
-                      </Link>
-                      <Link
-                        href="/signup"
-                        onClick={() => setUserOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors"
-                      >
-                        Create account
-                      </Link>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+                      />
+                    </UserButton.MenuItems>
+                  </UserButton>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/login"
+                      className="px-3 py-1.5 rounded-md text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors"
+                    >
+                      Sign in
+                    </Link>
+                    <Link
+                      href="/signup"
+                      className="px-3 py-1.5 rounded-md text-sm font-medium bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] transition-colors"
+                    >
+                      Create account
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Mobile toggle */}
             <button
@@ -357,7 +289,7 @@ export default function Navbar() {
               <p className="text-2xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider px-3 pb-2">
                 Account
               </p>
-              {authed ? (
+              {isSignedIn ? (
                 <>
                   <Link href="/profile" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] transition-colors">
                     <UserIcon size={14} /> Profile
@@ -368,12 +300,9 @@ export default function Navbar() {
                   <Link href="/chat" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] transition-colors">
                     <BotIcon size={14} /> EcoBot
                   </Link>
-                  <Link href="/chat" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] transition-colors">
-                    <InfoIcon size={14} /> Help
-                  </Link>
-                  <button onClick={handleLogout} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm text-[var(--destructive)] hover:bg-[var(--surface-raised)] transition-colors">
-                    <LogOutIcon size={14} /> Sign out
-                  </button>
+                  <div className="py-2 px-3">
+                    <UserButton />
+                  </div>
                 </>
               ) : (
                 <>

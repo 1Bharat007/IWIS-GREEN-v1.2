@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import { tierConfig } from "@/components/ui/Icons";
+import { motion } from "framer-motion";
 
 interface LeaderboardUser {
   displayName: string;
@@ -35,7 +36,7 @@ export default function LeaderboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-3xl mx-auto space-y-6 animate-fadeIn">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="max-w-2xl mx-auto space-y-6 py-2">
 
         {/* ── Page header ──────────────────────────────────── */}
         <div className="border-b border-[var(--border)] pb-5">
@@ -130,7 +131,7 @@ export default function LeaderboardPage() {
         <p className="text-xs text-[var(--text-tertiary)]">
           CO₂ figures represent total waste diverted and classified through the IWIS platform.
         </p>
-      </div>
+      </motion.div>
     </ProtectedRoute>
   );
 }

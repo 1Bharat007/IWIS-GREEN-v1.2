@@ -377,7 +377,7 @@ export const getMe = async (req: any, res: Response) => {
     const db = await getDB();
     const user = await db.get(
       `SELECT u.id, u.email, u.phone, u.displayName, u.role, u.totalScans, u.totalCO2, u.streak, u.tier, 
-              u.greenPoints, u.createdAt, u.totalEarnings, u.city, r.isApproved 
+              u.greenPoints, u.createdAt, u.totalEarnings, u.city, u.upiId, r.isApproved 
        FROM users u 
        LEFT JOIN recycler_profiles r ON u.id = r.userId 
        WHERE u.id = ?`,
@@ -418,19 +418,37 @@ export const getMe = async (req: any, res: Response) => {
 };
 
 // ─── UPDATE PROFILE ───────────────────────────────────────────────────────────
+const upiRegex = /^[\w.\-]{2,256}@[a-zA-Z]{2,64}$/;
+
 export const updateProfile = async (req: any, res: Response) => {
   try {
-    const { displayName } = req.body;
-    if (!displayName || typeof displayName !== "string" || displayName.trim().length === 0) {
-      throw new ValidationError("Display name is required.");
-    }
+    const { displayName, upiId } = req.body;
     const db = await getDB();
+
+    if (upiId !== undefined && upiId !== null && upiId !== "") {
+      if (typeof upiId !== "string" || !upiRegex.test(upiId.trim())) {
+        throw new ValidationError("Invalid UPI ID format (e.g., name@upi).");
+      }
+    }
+
+    const existingUser = await db.get("SELECT displayName, upiId FROM users WHERE id = ?", req.user.id);
+    const updatedDisplayName = (typeof displayName === "string" && displayName.trim().length > 0)
+      ? displayName.trim().slice(0, 60)
+      : existingUser?.displayName;
+    const updatedUpiId = (typeof upiId === "string") ? (upiId.trim() || null) : existingUser?.upiId;
+
     await db.run(
-      "UPDATE users SET displayName = ? WHERE id = ?",
-      [displayName.trim().slice(0, 60), req.user.id]
+      "UPDATE users SET displayName = ?, upiId = ? WHERE id = ?",
+      [updatedDisplayName, updatedUpiId, req.user.id]
     );
-    sendSuccess(res, { message: "Profile updated.", displayName: displayName.trim() });
-  } catch (err) {
+
+    sendSuccess(res, {
+      message: "Profile updated.",
+      displayName: updatedDisplayName,
+      upiId: updatedUpiId
+    });
+  } catch (err: any) {
+    if (err instanceof ValidationError) throw err;
     console.error("[updateProfile] error:", err);
     throw new DatabaseError("Failed to update profile.");
   }

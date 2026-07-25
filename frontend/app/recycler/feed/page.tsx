@@ -7,6 +7,7 @@ import { ArrowRightIcon } from "@/components/ui/Icons";
 import { demoRecyclerFeed } from "@/lib/demo/feed";
 
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
 type Listing = {
   id: string;
@@ -72,7 +73,7 @@ export default function RecyclerFeedPage() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 animate-fadeIn relative">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="max-w-4xl mx-auto py-8 px-4 sm:px-6 relative">
         <div className="mb-8 mt-2">
           <p className="text-xs font-semibold text-[var(--accent-text)] uppercase tracking-wider mb-1">
             Recycler Action
@@ -163,7 +164,7 @@ export default function RecyclerFeedPage() {
             ))}
           </div>
         )}
-      </div>
+      </motion.div>
     </ProtectedRoute>
   );
 }

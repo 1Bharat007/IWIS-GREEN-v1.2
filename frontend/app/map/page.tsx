@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { apiFetch } from "@/lib/api";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import { MapPinIcon, FilterIcon } from "@/components/ui/Icons";
+import { motion } from "framer-motion";
 
 // Dynamic import for Leaflet (must be CSR)
 const MapComponent = dynamic(
@@ -48,7 +49,7 @@ export default function GeoMapPage() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-7xl mx-auto flex flex-col h-[calc(100vh-100px)] animate-fadeIn">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="max-w-7xl mx-auto flex flex-col h-[calc(100vh-100px)]">
         
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-4">
@@ -110,7 +111,7 @@ export default function GeoMapPage() {
             <MapComponent hotspots={filteredHotspots} />
           )}
         </div>
-      </div>
+      </motion.div>
     </ProtectedRoute>
   );
 }

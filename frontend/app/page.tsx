@@ -9,6 +9,8 @@ import {
   ArrowRightIcon, CheckIcon, LayoutIcon, HistoryIcon
 } from "@/components/ui/Icons";
 
+import { motion } from "framer-motion";
+
 const FEATURES = [
   {
     Icon: ScanIcon,
@@ -69,7 +71,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="animate-fadeIn">
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }}>
 
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section className="pt-16 pb-20 border-b border-[var(--border)]">
@@ -199,6 +201,6 @@ export default function Home() {
           </Link>
         </section>
       )}
-    </div>
+    </motion.div>
   );
 }

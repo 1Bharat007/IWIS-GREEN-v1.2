@@ -6,6 +6,7 @@ import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import { apiFetch } from "@/lib/api";
 import { AlertIcon, CheckIcon, ArrowRightIcon } from "@/components/ui/Icons";
 import { useDraft } from "@/hooks/useDraft";
+import { motion } from "framer-motion";
 
 const MATERIALS = [
   "Plastic",
@@ -78,7 +79,7 @@ export default function RecyclerOnboarding() {
 
   return (
     <ProtectedRoute>
-      <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6 animate-fadeIn">
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="max-w-2xl mx-auto py-12 px-4 sm:px-6">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-2">
             Complete your Recycler Profile
@@ -206,7 +207,7 @@ export default function RecyclerOnboarding() {
           </div>
 
         </form>
-      </div>
+      </motion.div>
     </ProtectedRoute>
   );
 }
