@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
-import { getToken } from "@/lib/session";
 import ProtectedRoute from "@/components/layout/ProtectedRoute";
 import Link from "next/link";
 import { 
