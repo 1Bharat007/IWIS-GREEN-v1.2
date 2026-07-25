@@ -39,12 +39,12 @@ const CHAT_STAGES = [
   { label: "Generating response…", minDelay: 12000 },
 ];
 
-function getChatStorageKey(): string {
+async function getChatStorageKey(): Promise<string> {
   try {
-    const token = getToken();
+    const token = await getToken();
     if (!token) return "ecobot_threads_anonymous";
     const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    const userId = payload.id || payload.sub || "unknown";
+    const userId = payload.sub || payload.id || "user";
     return `ecobot_threads_${userId}`;
   } catch {
     return "ecobot_threads_anonymous";
@@ -86,16 +86,17 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    const key = getChatStorageKey();
-    storageKey.current = key;
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setThreads(parsed);
-        if (parsed.length > 0) setActiveThreadId(parsed[0].id);
-      } catch {}
-    }
+    getChatStorageKey().then((key) => {
+      storageKey.current = key;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setThreads(parsed);
+          if (parsed.length > 0) setActiveThreadId(parsed[0].id);
+        } catch {}
+      }
+    });
   }, []);
 
   useEffect(() => {

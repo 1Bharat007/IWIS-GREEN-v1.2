@@ -15,7 +15,7 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch(endpoint: string, options: any = {}) {
-  const token = getToken();
+  const token = await getToken();
 
   let response: Response;
 

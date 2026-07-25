@@ -135,6 +135,7 @@ const executeInitDB = async () => {
   try { await dbInstance.run("ALTER TABLE users ADD COLUMN upiId TEXT"); } catch (e) {}
   try { await dbInstance.run("ALTER TABLE users ADD COLUMN totalEarnings REAL DEFAULT 0"); } catch (e) {}
   try { await dbInstance.run("ALTER TABLE users ADD COLUMN preferredLanguage TEXT DEFAULT 'English'"); } catch (e) {}
+  try { await dbInstance.run("ALTER TABLE users ADD COLUMN clerkId TEXT"); } catch (e) {}
 
   // Standalone waste listings (Sell Your Waste — not tied to scan batches)
   await dbInstance.exec(`
@@ -312,6 +313,7 @@ const executeInitDB = async () => {
   await dbInstance.exec(`
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_clerkId ON users(clerkId);
     
     CREATE INDEX IF NOT EXISTS idx_transactions_citizen ON transactions(citizenId);
     CREATE INDEX IF NOT EXISTS idx_transactions_recycler ON transactions(recyclerId);

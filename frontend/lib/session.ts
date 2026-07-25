@@ -1,16 +1,22 @@
-const TOKEN_KEY = "iwis_token";
-
-export const getToken = () => {
+export const getToken = async (): Promise<string | null> => {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(TOKEN_KEY);
-};
-
-export const setToken = (token: string) => {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(TOKEN_KEY, token);
+  if ((window as any).Clerk?.session) {
+    try {
+      const token = await (window as any).Clerk.session.getToken();
+      return token || null;
+    } catch (err) {
+      console.warn("[session] Error getting Clerk session token:", err);
+      return null;
+    }
+  }
+  return null;
 };
 
 export const clearToken = () => {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(TOKEN_KEY);
+  try {
+    if ((window as any).Clerk) {
+      (window as any).Clerk.signOut();
+    }
+  } catch {}
 };

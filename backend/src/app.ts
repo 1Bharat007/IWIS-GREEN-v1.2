@@ -14,6 +14,7 @@ import errorMiddleware from "./middleware/error.middleware";
 import { requestLogger } from "./middleware/logger.middleware";
 import { standardLimiter } from "./middleware/rateLimit.middleware";
 import helmet from "helmet";
+import { clerkMiddleware } from "@clerk/express";
 
 const app = express();
 
@@ -65,6 +66,17 @@ app.use(
 // Increase body size for base64 image
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ limit: "20mb", extended: true }));
+
+const clerkHandler = clerkMiddleware();
+app.use((req: any, res: any, next: any) => {
+  clerkHandler(req, res, (err?: any) => {
+    if (err) {
+      // Allow request to proceed to protect middleware which handles 401
+      return next();
+    }
+    next();
+  });
+});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/waste", wasteRoutes);

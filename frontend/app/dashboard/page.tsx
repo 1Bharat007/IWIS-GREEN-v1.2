@@ -32,13 +32,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const load = async () => {
-      const token = getToken();
-      if (!token) return;
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-        setRole(payload.role || "citizen");
-      } catch {}
-
       try {
         const [meRes, analyticsRes, listingsRes, notifRes, txRes] = await Promise.all([
           apiFetch("/auth/me").then(r => r.data || r),
@@ -47,6 +40,10 @@ export default function DashboardPage() {
           apiFetch("/notifications").then(r => r.data || r).catch(() => []),
           apiFetch("/transactions").then(r => r.data || r).catch(() => [])
         ]);
+
+        if (meRes) {
+          setRole(meRes.role || "citizen");
+        }
 
         const userName = meRes?.displayName || meRes?.name || "";
         if (userName) setUserName(userName.split(" ")[0]);

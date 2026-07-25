@@ -53,21 +53,24 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = getToken();
-    setAuthed(!!token);
-    
-    if (token) {
-      apiFetch("/auth/me")
-        .then(data => {
-          if (data && data.city) {
-            setCity(data.city);
-          }
-        })
-        .catch(() => {})
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    const checkAuth = async () => {
+      const token = await getToken();
+      setAuthed(!!token);
+      
+      if (token) {
+        apiFetch("/auth/me")
+          .then(data => {
+            if (data && data.city) {
+              setCity(data.city);
+            }
+          })
+          .catch(() => {})
+          .finally(() => setLoading(false));
+      } else {
+        setLoading(false);
+      }
+    };
+    checkAuth();
   }, []);
 
   return (
