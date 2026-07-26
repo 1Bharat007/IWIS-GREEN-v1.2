@@ -1,4 +1,5 @@
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
+const uuidv4 = () => crypto.randomUUID();
 import { getDB } from "../db";
 import { AITelemetryEvent } from "../types/telemetry.types";
 
@@ -63,5 +64,7 @@ export const cleanupOldTelemetry = async () => {
   }
 };
 
-// Schedule automated cleanup every 24 hours
-setInterval(cleanupOldTelemetry, 24 * 60 * 60 * 1000);
+// Schedule automated cleanup every 24 hours (skip in test environment)
+if (process.env.NODE_ENV !== "test") {
+  setInterval(cleanupOldTelemetry, 24 * 60 * 60 * 1000);
+}

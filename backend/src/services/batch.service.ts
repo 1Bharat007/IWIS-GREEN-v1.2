@@ -1,4 +1,5 @@
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
+const uuidv4 = () => crypto.randomUUID();
 import { getDB } from "../db";
 import { AIResponse } from "../types/ai.types";
 import { invalidateAnalyticsCache } from "./analytics.service";

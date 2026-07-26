@@ -6,6 +6,7 @@
   "scripts": {
     "predev": "kill-port 5000",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "test": "jest --detectOpenHandles",
     "build": "tsc",
     "start": "node dist/server.js"
   },
@@ -39,6 +40,11 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "kill-port": "^2.0.1"
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^7.2.1",
+    "jest": "^30.4.2",
+    "kill-port": "^2.0.1",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.12"
   }
 }

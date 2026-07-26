@@ -56,22 +56,39 @@ class VectorDB {
       let failedCount = 0;
       const startTime = Date.now();
 
-      // Batch process embeddings to respect API limits
-      const batchSize = 10;
+      // Batch process embeddings sequentially to strictly stay under 100 req/min free tier limit
+      const batchSize = 2;
       for (let i = 0; i < this.chunks.length; i += batchSize) {
         const batch = this.chunks.slice(i, i + batchSize);
         await Promise.all(batch.map(async (chunk) => {
-          try {
-            const result = await this.ai.models.embedContent({
-              model: "gemini-embedding-2",
-              contents: chunk.text,
-            });
-            chunk.embedding = result.embeddings?.[0]?.values;
-            if (chunk.embedding) embeddedCount++;
-          } catch (err) {
-            failedCount++;
+          let attempts = 0;
+          while (attempts < 3) {
+            try {
+              const result = await this.ai.models.embedContent({
+                model: "models/gemini-embedding-001",
+                contents: chunk.text,
+              });
+              chunk.embedding = result.embeddings?.[0]?.values;
+              if (chunk.embedding) {
+                embeddedCount++;
+                break;
+              }
+            } catch (err: any) {
+              attempts++;
+              const msg = String(err?.message || err);
+              if ((msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED")) && attempts < 3) {
+                await new Promise((res) => setTimeout(res, 3000 * attempts));
+              } else {
+                failedCount++;
+                if (failedCount <= 3) {
+                  console.error(`[RAG] Embedding failed for chunk ${chunk.id}:`, msg);
+                }
+                break;
+              }
+            }
           }
         }));
+        await new Promise((resolve) => setTimeout(resolve, 1200));
       }
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -148,7 +165,7 @@ class VectorDB {
 
     try {
       const queryEmbedResult = await this.ai.models.embedContent({
-        model: "gemini-embedding-2",
+        model: "models/gemini-embedding-001",
         contents: query,
       });
       const queryVector = queryEmbedResult.embeddings?.[0]?.values;

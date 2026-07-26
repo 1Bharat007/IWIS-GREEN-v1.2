@@ -1,6 +1,5 @@
 import { getDB } from "../src/db";
 import crypto from "crypto";
-import bcrypt from "bcryptjs";
 import path from "path";
 
 // Execute from backend root using `npx ts-node scripts/seed-demo.ts`
@@ -15,89 +14,95 @@ async function seed() {
   // 1. Create Demo Users
   const citizenId = "demo-citizen-001";
   const recyclerId = "demo-recycler-001";
-  const passwordHash = await bcrypt.hash("password123", 10);
   const now = new Date().toISOString();
 
   console.log("👤 Creating/Updating demo users...");
   // Try to update existing users first to avoid foreign key constraints
-  await db.run(`UPDATE users SET email = ?, password = ?, phone = ? WHERE id = ?`, ["demo@iwis.app", passwordHash, "+919596310276", citizenId]);
-  await db.run(`UPDATE users SET email = ?, password = ?, phone = ? WHERE id = ?`, ["recycler@iwis.app", passwordHash, "+919596310277", recyclerId]);
+  await db.run(`UPDATE users SET email = ?, phone = ?, clerkId = ? WHERE id = ?`, ["demo@iwis.app", "+919596310276", "user_demo_citizen", citizenId]);
+  await db.run(`UPDATE users SET email = ?, phone = ?, clerkId = ? WHERE id = ?`, ["recycler@iwis.app", "+919596310277", "user_demo_recycler", recyclerId]);
   
   await db.run(`INSERT OR IGNORE INTO users 
-    (id, email, password, role, displayName, phone, city, greenPoints, tier, totalScans, totalCO2, totalEarnings, createdAt) 
+    (id, email, clerkId, role, displayName, phone, city, greenPoints, tier, totalScans, totalCO2, totalEarnings, createdAt) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-    [citizenId, "demo@iwis.app", passwordHash, "citizen", "Aryan Sharma", "+919596310276", "Delhi", 450, "Sprout", 12, 14.5, 450.50, now]
+    [citizenId, "demo@iwis.app", "user_demo_citizen", "citizen", "Aryan Sharma", "+919596310276", "Delhi", 450, "Sprout", 12, 14.5, 450.50, now]
   );
 
   await db.run(`INSERT OR IGNORE INTO users 
-    (id, email, password, role, displayName, phone, city, totalEarnings, createdAt) 
+    (id, email, clerkId, role, displayName, phone, city, totalEarnings, createdAt) 
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-    [recyclerId, "recycler@iwis.app", passwordHash, "recycler", "Green Earth Scrap", "+919596310277", "Delhi", 4520.50, now]
+    [recyclerId, "recycler@iwis.app", "user_demo_recycler", "recycler", "Green Earth Scrap", "+919596310277", "Delhi", 4520.50, now]
   );
 
   // 2. Create Recycler Profile
   console.log("🏢 Creating recycler profile...");
   await db.run(`INSERT OR REPLACE INTO recycler_profiles 
-    (id, userId, businessName, acceptedMaterials, serviceRadiusKm, rating, totalPickups, isApproved, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ["profile-001", recyclerId, "Green Earth Scrap Ltd", "Plastic, Metal, E-Waste", 15, 4.8, 124, 1, now]
+    (id, userId, businessName, gstin, acceptedMaterials, serviceRadiusKm, lat, lng, rating, totalPickups, isApproved, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [crypto.randomUUID(), recyclerId, "Green Earth Scrap", "07AAAAA0000A1Z5", '["Paper","Plastic","Metal","E-Waste"]', 10, 28.6139, 77.2090, 4.8, 142, 1, now]
   );
 
-  // 3. Create Scan Batches (AI History)
-  console.log("📷 Creating AI scan history...");
-  const batch1 = "batch-001";
-  await db.run(`INSERT OR IGNORE INTO batches 
-    (id, userId, category, confidence, co2, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?)`,
-    [batch1, citizenId, "PET Plastic Bottles", 96, 2.4, now]
-  );
+  // 3. Create Sample Waste Listings
+  console.log("📦 Creating sample waste listings...");
+  const listings = [
+    {
+      id: "listing-001",
+      material: "Paper & Cardboard",
+      weight: 15.5,
+      value: 93.00,
+      status: "listed",
+      desc: "Clean cardboard boxes from moving + old newspapers",
+      address: "Connaught Place, Block C, New Delhi"
+    },
+    {
+      id: "listing-002",
+      material: "Plastic Bottles (PET)",
+      weight: 8.0,
+      value: 96.00,
+      status: "scheduled",
+      desc: "Crushed PET water bottles and beverage containers",
+      address: "Lajpat Nagar IV, New Delhi",
+      recycler: recyclerId
+    },
+    {
+      id: "listing-003",
+      material: "E-Waste (Old Electronics)",
+      weight: 4.2,
+      value: 126.00,
+      status: "completed",
+      desc: "Old computer monitor, broken keyboard, and copper wiring",
+      address: "Nehru Place, New Delhi",
+      recycler: recyclerId
+    }
+  ];
 
-  // 4. Create Listings (Open, Accepted, Completed)
-  console.log("📦 Creating waste listings...");
-  const listingOpen = "listing-open";
-  const listingAccepted = "listing-accepted";
-  const listingCompleted = "listing-completed";
+  for (const l of listings) {
+    await db.run(`INSERT OR REPLACE INTO waste_listings 
+      (id, citizenId, materialType, estimatedWeightKg, estimatedValue, status, description, pickupAddress, recyclerId, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [l.id, citizenId, l.material, l.weight, l.value, l.status, l.desc, l.address, l.recycler || null, now]
+    );
+  }
 
-  // Open Listing (Visible in Feed)
-  await db.run(`INSERT OR IGNORE INTO waste_listings 
-    (id, citizenId, materialType, estimatedWeightKg, pickupAddress, lat, lng, status, estimatedValue, createdAt)
+  // 4. Create Sample Completed Transaction
+  console.log("💳 Creating sample transaction...");
+  await db.run(`INSERT OR REPLACE INTO transactions
+    (id, listingId, citizenId, recyclerId, amount, platformFee, citizenEarnings, status, paymentMethod, createdAt)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [listingOpen, citizenId, "Metal & E-Waste", 14.5, "123 Green Avenue, Jammu", 32.7266, 74.8570, "listed", 450, now]
+    ["txn-001", "listing-003", citizenId, recyclerId, 126.00, 6.30, 119.70, "completed", "upi", now]
   );
 
-  // Accepted Listing (In Pickup Workflow)
-  await db.run(`INSERT OR IGNORE INTO waste_listings 
-    (id, citizenId, recyclerId, materialType, estimatedWeightKg, pickupAddress, status, estimatedValue, scheduledDate, scheduledTimeSlot, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [listingAccepted, citizenId, recyclerId, "Cardboard Boxes", 8.0, "123 Green Avenue, Jammu", "accepted", 48, new Date().toISOString().split("T")[0], "Afternoon (12PM - 4PM)", now]
-  );
-
-  // Completed Listing
-  await db.run(`INSERT OR IGNORE INTO waste_listings 
-    (id, citizenId, recyclerId, materialType, estimatedWeightKg, actualWeightKg, pickupAddress, status, estimatedValue, finalValue, completedAt, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [listingCompleted, citizenId, recyclerId, "Mixed Plastic", 5.0, 5.2, "123 Green Avenue, Jammu", "completed", 60, 62.4, now, now]
-  );
-
-  // 5. Create Transactions
-  console.log("💳 Creating transactions...");
-  await db.run(`INSERT OR IGNORE INTO transactions 
-    (id, listingId, citizenId, recyclerId, material, finalWeightKg, pricePerKg, amount, platformFee, citizenEarnings, status, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ["txn-001", listingCompleted, citizenId, recyclerId, "Mixed Plastic", 5.2, 12, 62.4, 0, 62.4, "completed", now]
-  );
-
-  // 6. Create Notifications
-  console.log("🔔 Creating notifications...");
-  await db.run(`INSERT OR IGNORE INTO notifications 
-    (id, userId, title, message, type, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?)`,
-    ["notif-001", citizenId, "Pickup Scheduled", "Green Earth Scrap accepted your cardboard listing.", "info", now]
+  // 5. Create Sample Hotspot Report
+  console.log("🚨 Creating sample hotspot report...");
+  await db.run(`INSERT OR REPLACE INTO hotspots
+    (id, reportedBy, photoUrl, lat, lng, addressText, severity, status, wardNumber, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ["hotspot-001", citizenId, "https://images.unsplash.com/photo-1530587191325-3db32d826c18?w=500", 28.6280, 77.2180, "Near Gole Market Metro Station", "high", "open", "Ward 42", now]
   );
 
   console.log("✅ Demo dataset seeded successfully!");
-  console.log("Demo Citizen: demo@iwis.app / password123");
-  console.log("Demo Recycler: recycler@iwis.app / password123");
 }
 
-seed().catch(console.error);
+seed().catch(err => {
+  console.error("❌ Seeding failed:", err);
+  process.exit(1);
+});

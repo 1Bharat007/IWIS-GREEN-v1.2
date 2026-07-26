@@ -47,13 +47,12 @@ graph TD
 
 ### 1. Authentication
 
-IWIS uses stateless **JSON Web Tokens (JWT)**.
+IWIS uses **Clerk Managed Identity** with RSA-signed JWTs (`@clerk/nextjs` + `@clerk/express`).
 
-- **Registration:** Users sign up as `citizen` or `recycler`. Passwords are hashed with `bcrypt` (cost factor 10).
-- **Login:** Returns a signed JWT containing `userId`, `role`, and `email`.
-- **Session Management:** The frontend stores the JWT in `localStorage`. The API fetch utility automatically attaches it as a `Bearer` token.
-- **Token Expiry:** On HTTP 401, the frontend intercepts the response, clears storage, and redirects to `/login`.
-- **RBAC:** The `authMiddleware` injects `req.user` into the request. Controllers validate `req.user.role` before executing mutations.
+- **Sign Up / Login:** Managed via Clerk components (`/signup`, `/login`) supporting Google OAuth and Email OTP.
+- **Backend Middleware:** `@clerk/express` verifies incoming bearer/session tokens on every API request.
+- **RBAC & JIT Provisioning:** `auth.middleware.ts` automatically provisions local user database records (`users.clerkId`) and enforces Role-Based Access Control (`citizen` vs `recycler`).
+- **Token Expiry:** On HTTP 401, frontend `apiFetch` safely clears local state and redirects to `/login`.
 
 ### 2. AI Waste Scanner
 

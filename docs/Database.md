@@ -23,7 +23,7 @@ erDiagram
     users {
         TEXT id PK "UUID"
         TEXT email UK "Unique"
-        TEXT password "bcrypt hash"
+        TEXT clerkId UK "Clerk User ID"
         TEXT role "citizen | recycler"
         TEXT phone
         TEXT displayName
@@ -101,7 +101,7 @@ Stores all platform users. The `role` field determines access to citizen or recy
 |--------|------|-------------|-------------|
 | id | TEXT | PRIMARY KEY | UUID v4 |
 | email | TEXT | UNIQUE, NOT NULL | Login identifier |
-| password | TEXT | NOT NULL | bcrypt hash (cost 10) |
+| clerkId | TEXT | UNIQUE, NOT NULL | External Clerk Authentication ID (`user_...`) |
 | role | TEXT | NOT NULL | `citizen` or `recycler` |
 | phone | TEXT | | Contact number |
 | displayName | TEXT | | Public display name |

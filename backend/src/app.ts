@@ -18,7 +18,30 @@ import { clerkMiddleware } from "@clerk/express";
 
 const app = express();
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://clerk.com", "https://*.clerk.accounts.dev"],
+        connectSrc: ["'self'", "https://clerk.com", "https://*.clerk.accounts.dev", "https://api.clerk.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        fontSrc: ["'self'", "https:", "data:"],
+        frameSrc: ["'self'", "https://clerk.com", "https://*.clerk.accounts.dev"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+    referrerPolicy: {
+      policy: "strict-origin-when-cross-origin",
+    },
+  })
+);
 app.use(requestLogger);
 app.use(standardLimiter);
 

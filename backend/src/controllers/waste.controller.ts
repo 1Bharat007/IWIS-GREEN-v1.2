@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { analyzeImage } from "../services/ai.service";
 import { getDB } from "../db";
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
+const uuidv4 = () => crypto.randomUUID();
 import { saveBatch } from "../services/batch.service";
 import { sendSuccess, sendError } from "../utils/apiResponse.util";
 import { ValidationError, DatabaseError } from "../utils/errors";

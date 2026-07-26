@@ -2,7 +2,8 @@ import { sendSuccess } from "../utils/apiResponse.util";
 import { AppError, ValidationError, AuthenticationError, AuthorizationError, DatabaseError } from "../utils/errors";
 import { Request, Response } from "express";
 import { getDB } from "../db";
-import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
+const uuidv4 = () => crypto.randomUUID();
 
 // 1. Create a Listing (Citizen)
 export const createListing = async (req: any, res: Response) => {

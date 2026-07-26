@@ -6,20 +6,12 @@ IWIS implements defense-in-depth security across the full stack. This document c
 
 ## 1. Authentication
 
-### Password Storage
-- Passwords are hashed using **bcrypt** with a cost factor of 10.
-- Raw passwords are never stored, logged, or transmitted after hashing.
-
-### JWT Tokens
-- Issued on successful login/signup, signed with `JWT_SECRET`.
-- Tokens contain: `userId`, `role`, `email`.
-- Token validation occurs in `authMiddleware` on every protected request.
-- **Expiry Handling:** On HTTP 401, the frontend clears all local storage and redirects to `/login`.
-
-### Session Management
-- Stateless architecture — no server-side session store.
-- Tokens are stored in `localStorage` on the client.
-- Logout clears all stored tokens and user data.
+### Clerk Managed Identity & JWT
+- Authentication is managed centrally via **Clerk** (`@clerk/nextjs` on frontend, `@clerk/express` on backend).
+- Tokens are signed RSA JWTs validated at the backend middleware layer using `@clerk/express`.
+- **Session Management:** Clerk handles session renewal, OAuth (Google/Apple), and passwordless authentication.
+- **JIT Provisioning:** Upon valid Clerk authentication, user accounts are Just-In-Time provisioned or synchronized in local SQLite database (`users` table matched by `clerkId`).
+- **Expiry & Protection:** On HTTP 401, frontend `apiFetch` safely redirects unauthenticated sessions to `/login`.
 
 ---
 
