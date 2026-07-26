@@ -41,6 +41,9 @@ export default function Navbar() {
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + "/");
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
     if (isSignedIn) {
       apiFetch("/auth/me")
@@ -146,7 +149,7 @@ export default function Navbar() {
               className="flex items-center justify-center w-11 h-11 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-raised)] transition-colors"
               aria-label="Toggle dark mode"
             >
-              {resolvedTheme === "dark" ? <SunIcon size={15} /> : <MoonIcon size={15} />}
+              {mounted ? (resolvedTheme === "dark" ? <SunIcon size={15} /> : <MoonIcon size={15} />) : <SunIcon size={15} />}
             </button>
 
             {/* Notification Bell */}
