@@ -45,7 +45,7 @@ export default function Navbar() {
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (isSignedIn) {
+    if (isLoaded && isSignedIn) {
       apiFetch("/auth/me")
         .then(res => {
           const data = res?.data || res;
@@ -62,7 +62,7 @@ export default function Navbar() {
         })
         .catch(() => {});
     }
-  }, [isSignedIn, pathname]);
+  }, [isLoaded, isSignedIn, pathname]);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
