@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "predev": "kill-port 5000",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js"
@@ -36,5 +37,8 @@
     "typescript": "^5.9.3",
     "uuid": "^13.0.0",
     "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "kill-port": "^2.0.1"
   }
 }

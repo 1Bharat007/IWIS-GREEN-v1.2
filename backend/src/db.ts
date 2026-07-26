@@ -20,6 +20,23 @@ const executeInitDB = async () => {
   await dbInstance.run("PRAGMA synchronous = NORMAL;");
   await dbInstance.run("PRAGMA foreign_keys = ON;");
 
+  let migrationFailed = false;
+
+  const runMigration = async (sql: string, columnName: string) => {
+    try {
+      await dbInstance.run(sql);
+      console.log(`[db] Applied migration for ${columnName}`);
+    } catch (e: any) {
+      const msg = String(e?.message || e).toLowerCase();
+      if (msg.includes("duplicate column name") || msg.includes("already exists")) {
+        console.log(`[db] ${columnName} column already present`);
+      } else {
+        console.error(`[db] MIGRATION FAILED for ${columnName} column:`, e);
+        migrationFailed = true;
+      }
+    }
+  };
+
   // ─── EXISTING TABLES (preserved) ─────────────────────────────────────────
   await dbInstance.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -93,10 +110,10 @@ const executeInitDB = async () => {
   `);
 
   // Idempotently add geographic columns if they don't exist
-  try { await dbInstance.run("ALTER TABLE batches ADD COLUMN lat REAL"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE batches ADD COLUMN lng REAL"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN greenPoints REAL DEFAULT 0"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN displayName TEXT"); } catch (e) {}
+  await runMigration("ALTER TABLE batches ADD COLUMN lat REAL", "batches.lat");
+  await runMigration("ALTER TABLE batches ADD COLUMN lng REAL", "batches.lng");
+  await runMigration("ALTER TABLE users ADD COLUMN greenPoints REAL DEFAULT 0", "users.greenPoints");
+  await runMigration("ALTER TABLE users ADD COLUMN displayName TEXT", "users.displayName");
 
   // Password reset tokens table
   await dbInstance.exec(`
@@ -117,25 +134,25 @@ const executeInitDB = async () => {
     );
   `);
   
-  try { await dbInstance.run("ALTER TABLE otp_codes ADD COLUMN lastRequestedAt TEXT"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE otp_codes ADD COLUMN hourlyCount INTEGER DEFAULT 0"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE otp_codes ADD COLUMN attempts INTEGER DEFAULT 0"); } catch (e) {}
+  await runMigration("ALTER TABLE otp_codes ADD COLUMN lastRequestedAt TEXT", "otp_codes.lastRequestedAt");
+  await runMigration("ALTER TABLE otp_codes ADD COLUMN hourlyCount INTEGER DEFAULT 0", "otp_codes.hourlyCount");
+  await runMigration("ALTER TABLE otp_codes ADD COLUMN attempts INTEGER DEFAULT 0", "otp_codes.attempts");
 
   // ─── NEW MVP TABLES ──────────────────────────────────────────────────────
 
   // New user columns for MVP
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN phone TEXT"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN phoneVerified INTEGER DEFAULT 0"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN address TEXT"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN city TEXT"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN state TEXT"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN pincode TEXT"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN lat REAL"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN lng REAL"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN upiId TEXT"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN totalEarnings REAL DEFAULT 0"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN preferredLanguage TEXT DEFAULT 'English'"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE users ADD COLUMN clerkId TEXT"); } catch (e) {}
+  await runMigration("ALTER TABLE users ADD COLUMN phone TEXT", "users.phone");
+  await runMigration("ALTER TABLE users ADD COLUMN phoneVerified INTEGER DEFAULT 0", "users.phoneVerified");
+  await runMigration("ALTER TABLE users ADD COLUMN address TEXT", "users.address");
+  await runMigration("ALTER TABLE users ADD COLUMN city TEXT", "users.city");
+  await runMigration("ALTER TABLE users ADD COLUMN state TEXT", "users.state");
+  await runMigration("ALTER TABLE users ADD COLUMN pincode TEXT", "users.pincode");
+  await runMigration("ALTER TABLE users ADD COLUMN lat REAL", "users.lat");
+  await runMigration("ALTER TABLE users ADD COLUMN lng REAL", "users.lng");
+  await runMigration("ALTER TABLE users ADD COLUMN upiId TEXT", "users.upiId");
+  await runMigration("ALTER TABLE users ADD COLUMN totalEarnings REAL DEFAULT 0", "users.totalEarnings");
+  await runMigration("ALTER TABLE users ADD COLUMN preferredLanguage TEXT DEFAULT 'English'", "users.preferredLanguage");
+  await runMigration("ALTER TABLE users ADD COLUMN clerkId TEXT", "clerkId");
 
   // Standalone waste listings (Sell Your Waste — not tied to scan batches)
   await dbInstance.exec(`
@@ -168,11 +185,8 @@ const executeInitDB = async () => {
     CREATE INDEX IF NOT EXISTS idx_waste_listings_recyclerId ON waste_listings(recyclerId);
   `);
   
-  // Idempotently add wasteVolume column if it doesn't exist
-  try { await dbInstance.run("ALTER TABLE waste_listings ADD COLUMN wasteVolume TEXT"); } catch (e) {}
-  
-  // Idempotently add thumbnail column to batches
-  try { await dbInstance.run("ALTER TABLE batches ADD COLUMN thumbnail TEXT"); } catch (e) {}
+  await runMigration("ALTER TABLE waste_listings ADD COLUMN wasteVolume TEXT", "waste_listings.wasteVolume");
+  await runMigration("ALTER TABLE batches ADD COLUMN thumbnail TEXT", "batches.thumbnail");
 
   // Transactions for completed pickups
   await dbInstance.exec(`
@@ -198,14 +212,13 @@ const executeInitDB = async () => {
     );
   `);
   
-  // Idempotently add new columns to transactions if they don't exist
-  try { await dbInstance.run("ALTER TABLE transactions ADD COLUMN material TEXT"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE transactions ADD COLUMN finalWeightKg REAL"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE transactions ADD COLUMN pricePerKg REAL"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE transactions ADD COLUMN citizenEarnings REAL"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE transactions ADD COLUMN status TEXT DEFAULT 'completed'"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE transactions ADD COLUMN feedbackRating REAL"); } catch (e) {}
-  try { await dbInstance.run("ALTER TABLE transactions ADD COLUMN feedbackComment TEXT"); } catch (e) {}
+  await runMigration("ALTER TABLE transactions ADD COLUMN material TEXT", "transactions.material");
+  await runMigration("ALTER TABLE transactions ADD COLUMN finalWeightKg REAL", "transactions.finalWeightKg");
+  await runMigration("ALTER TABLE transactions ADD COLUMN pricePerKg REAL", "transactions.pricePerKg");
+  await runMigration("ALTER TABLE transactions ADD COLUMN citizenEarnings REAL", "transactions.citizenEarnings");
+  await runMigration("ALTER TABLE transactions ADD COLUMN status TEXT DEFAULT 'completed'", "transactions.status");
+  await runMigration("ALTER TABLE transactions ADD COLUMN feedbackRating REAL", "transactions.feedbackRating");
+  await runMigration("ALTER TABLE transactions ADD COLUMN feedbackComment TEXT", "transactions.feedbackComment");
 
   // Recycler profiles
   await dbInstance.exec(`
@@ -261,8 +274,7 @@ const executeInitDB = async () => {
     );
   `);
   
-  // Idempotently add updatedAt column if it doesn't exist
-  try { await dbInstance.run("ALTER TABLE scrap_prices ADD COLUMN updatedAt TEXT DEFAULT ''"); } catch (e) {}
+  await runMigration("ALTER TABLE scrap_prices ADD COLUMN updatedAt TEXT DEFAULT ''", "scrap_prices.updatedAt");
 
   // Collection confirmations (citizen daily check)
   await dbInstance.exec(`
@@ -293,21 +305,21 @@ const executeInitDB = async () => {
   `);
 
   // ─── SPRINT 2 MIGRATIONS (Batches Normalization) ───────────────────────────
-  const addColumn = async (table: string, columnDef: string) => {
-    try { await dbInstance.exec(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`); } catch (e) {}
-  };
+  await runMigration("ALTER TABLE batches ADD COLUMN subCategory TEXT", "batches.subCategory");
+  await runMigration("ALTER TABLE batches ADD COLUMN recyclability TEXT", "batches.recyclability");
+  await runMigration("ALTER TABLE batches ADD COLUMN marketDemand TEXT", "batches.marketDemand");
+  await runMigration("ALTER TABLE batches ADD COLUMN estimatedWeight REAL", "batches.estimatedWeight");
+  await runMigration("ALTER TABLE batches ADD COLUMN estimatedPricePerKg REAL", "batches.estimatedPricePerKg");
+  await runMigration("ALTER TABLE batches ADD COLUMN aiVersion TEXT", "batches.aiVersion");
+  await runMigration("ALTER TABLE batches ADD COLUMN processingTimeMs INTEGER", "batches.processingTimeMs");
+  await runMigration("ALTER TABLE batches ADD COLUMN validationStatus TEXT", "batches.validationStatus");
+  await runMigration("ALTER TABLE batches ADD COLUMN normalizationStatus TEXT", "batches.normalizationStatus");
+  await runMigration("ALTER TABLE batches ADD COLUMN narrativeMetadata TEXT", "batches.narrativeMetadata");
 
-  await addColumn('batches', 'subCategory TEXT');
-  await addColumn('batches', 'recyclability TEXT');
-  await addColumn('batches', 'marketDemand TEXT');
-  await addColumn('batches', 'estimatedWeight REAL');
-  await addColumn('batches', 'estimatedPricePerKg REAL');
-  await addColumn('batches', 'aiVersion TEXT');
-  await addColumn('batches', 'processingTimeMs INTEGER');
-  await addColumn('batches', 'validationStatus TEXT');
-  await addColumn('batches', 'normalizationStatus TEXT');
-  await addColumn('batches', 'narrativeMetadata TEXT');
-
+  // Fail loud if any migration unexpectedly failed
+  if (migrationFailed) {
+    throw new Error("[db] Database initialization failed due to schema migration errors.");
+  }
 
   // ─── PERFORMANCE INDEXES ───────────────────────────────────────────────────
   await dbInstance.exec(`

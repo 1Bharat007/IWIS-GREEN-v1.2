@@ -166,6 +166,8 @@ npm run dev
 ```
 Visit `http://localhost:3000` to view the application.
 
+> **Note**: If `npm run dev` ever reports a port already in use or a lock file conflict, this is now handled automatically via `predev` — but if problems persist, check Task Manager for orphaned `node.exe` processes.
+
 ### 4. Demo Dataset (Optional)
 To instantly populate your local environment with realistic test data:
 ```bash
