@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { ClerkProvider, Show } from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
 import Navbar from "@/components/layout/Navbar";
 import { TaskProvider } from "@/components/providers/TaskProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
@@ -45,12 +45,7 @@ export default function RootLayout({
               <ServiceWorkerRegistration />
               <Navbar />
               <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-                <Show when="signed-in">
-                  <OnboardingGate>{children}</OnboardingGate>
-                </Show>
-                <Show when="signed-out">
-                  {children}
-                </Show>
+                <OnboardingGate>{children}</OnboardingGate>
               </main>
               <EcoBotFAB />
               <TaskOverlay />
