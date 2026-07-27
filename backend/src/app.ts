@@ -18,17 +18,23 @@ import { clerkMiddleware } from "@clerk/express";
 
 const app = express();
 
+const isProd = process.env.NODE_ENV === "production";
+const scriptSrc = ["'self'", "'unsafe-inline'", "https://*.clerk.accounts.dev"];
+if (!isProd) {
+  scriptSrc.push("'unsafe-eval'");
+}
+
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://clerk.com", "https://*.clerk.accounts.dev"],
-        connectSrc: ["'self'", "https://clerk.com", "https://*.clerk.accounts.dev", "https://api.clerk.com"],
-        imgSrc: ["'self'", "data:", "blob:", "https:"],
+        scriptSrc,
+        connectSrc: ["'self'", "https://*.clerk.accounts.dev", "https://api.clerk.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https://img.clerk.com"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        fontSrc: ["'self'", "https:", "data:"],
-        frameSrc: ["'self'", "https://clerk.com", "https://*.clerk.accounts.dev"],
+        fontSrc: ["'self'", "data:"],
+        frameSrc: ["'self'", "https://*.clerk.accounts.dev"],
       },
     },
     crossOriginEmbedderPolicy: false,
