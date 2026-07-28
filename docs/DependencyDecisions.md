@@ -27,7 +27,8 @@ This document records technical rationale, test results, and incompatibility det
 ---
 
 ## 2. `dependabot/npm_and_yarn/backend/backend-dependencies-e75af3e1db`
-- **Branch**: `origin/dependabot/npm_and_yarn/backend/backend-dependencies-e75af3e1db`
+- **Branch**: `origin/dependabot/npm_and_yarn/backend/backend-dependencies-e75af3e1db` (superseded & auto-closed by Dependabot — branch no longer exists on origin)
+- **Status**: **CLOSED** (superseded by branch `072715cef2`)
 - **Target Component**: Backend Dependencies Group (`backend/`)
 - **Key Version Jumps**:
   - `typescript`: `^5.9.3` → `7.0.2`
