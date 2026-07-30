@@ -98,35 +98,49 @@ async function verifyTable(
     return { checked: 0, mismatches: 0 };
   }
 
+  // SQLite preserves camelCase column names; Postgres lowercases them.
+  // We build a normalised version of each SQLite row with lowercase keys.
+  const normaliseRow = (row: any) => {
+    const out: any = {};
+    for (const [k, v] of Object.entries(row)) {
+      out[k.toLowerCase()] = v;
+    }
+    return out;
+  };
+
+  const allNormRows = allSqliteRows.map(normaliseRow);
+
   // Sample: all rows if <= 10, otherwise 10 random rows
   let sample: any[];
-  if (allSqliteRows.length <= 10) {
-    sample = allSqliteRows;
-    log(`  Checking ALL ${allSqliteRows.length} row(s) (table has ≤10 rows).`);
+  if (allNormRows.length <= 10) {
+    sample = allNormRows;
+    log(`  Checking ALL ${allNormRows.length} row(s) (table has ≤10 rows).`);
   } else {
     // Fisher-Yates partial shuffle to pick 10 random rows without replacement
-    const arr = [...allSqliteRows];
+    const arr = [...allNormRows];
     for (let i = arr.length - 1; i > arr.length - 11; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     sample = arr.slice(arr.length - 10);
-    log(`  Sampling 10 random rows from ${allSqliteRows.length} total.`);
+    log(`  Sampling 10 random rows from ${allNormRows.length} total.`);
   }
 
-  const columns = Object.keys(allSqliteRows[0]);
+  // PK key is lowercase now too
+  const pkLower = pk.toLowerCase();
+  const columns = Object.keys(allNormRows[0]);
   let mismatches = 0;
 
   for (const sqliteRow of sample) {
-    const pkVal = sqliteRow[pk];
-    // Fetch the matching Postgres row by PK
+    const pkVal = sqliteRow[pkLower];
+    // Fetch the matching Postgres row by PK (column name is already lowercase in Postgres)
     const pgRow = await pgGet(
-      `SELECT * FROM "${table}" WHERE "${pk}" = $1`,
+      `SELECT * FROM "${table}" WHERE "${pkLower}" = $1`,
       [pkVal]
     );
 
     if (!pgRow) {
-      log(`  ❌ MISSING in Postgres: ${table}.${pk} = ${pkVal}`);
+      log(`  ❌ MISSING in Postgres: ${table}.${pkLower} = ${pkVal}`);
       mismatches++;
       continue;
     }

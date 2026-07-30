@@ -102,8 +102,11 @@ async function migrateTable(
     return { sqliteCount: 0, pgCountBefore: before, pgCountAfter: before, inserted: 0 };
   }
 
-  const columns = Object.keys(rows[0]);
-  const colList = columns.map((c) => `"${c}"`).join(", ");
+  // SQLite preserves column names as defined; Postgres lowercases unquoted identifiers.
+  // We lowercase every column name to match what Postgres actually stored.
+  const sqliteColumns = Object.keys(rows[0]);
+  const pgColumns = sqliteColumns.map((c) => c.toLowerCase());
+  const colList = pgColumns.map((c) => `"${c}"`).join(", ");
 
   let inserted = 0;
   const BATCH_SIZE = 100;
@@ -111,11 +114,10 @@ async function migrateTable(
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
     for (const row of batch) {
-      const values = columns.map((c) => row[c]);
-      const placeholders = columns.map((_, idx) => `$${idx + 1}`).join(", ");
-      // We build the Postgres SQL directly here (using $N syntax) to bypass
-      // translatePlaceholders — this avoids double-translating and keeps
-      // the migration script self-contained and explicit.
+      // Values in original SQLite column order (same order as pgColumns)
+      const values = sqliteColumns.map((c) => row[c]);
+      const placeholders = pgColumns.map((_, idx) => `$${idx + 1}`).join(", ");
+      // Build Postgres SQL directly with $N syntax (bypass translatePlaceholders)
       const sql = `INSERT INTO "${table}" (${colList}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`;
       const result = await pgRun(sql, values);
       inserted += result.changes;

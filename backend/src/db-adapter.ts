@@ -22,12 +22,19 @@ function getPool(): Pool {
           "Add it to your .env file to use the Postgres adapter."
       );
     }
+    // Enable SSL for all remote connections (Render, Supabase, etc.)
+    // Skip SSL only when explicitly connecting to localhost for local dev
+    const isLocal =
+      process.env.DATABASE_URL.includes("localhost") ||
+      process.env.DATABASE_URL.includes("127.0.0.1");
+
     const config: PoolConfig = {
       connectionString: process.env.DATABASE_URL,
+      ssl: isLocal ? false : { rejectUnauthorized: false },
       // Sensible pool defaults; tunable via env later
       max: 10,
       idleTimeoutMillis: 30_000,
-      connectionTimeoutMillis: 5_000,
+      connectionTimeoutMillis: 10_000,
     };
     pool = new Pool(config);
   }
