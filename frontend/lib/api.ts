@@ -55,14 +55,6 @@ export async function apiFetch(endpoint: string, options: any = {}) {
     // Map to dictionary
     if (response.status === 401) {
       friendlyMessage = ErrorDictionary.SESSION_EXPIRED.message;
-      if (typeof window !== "undefined") {
-        clearToken();
-        const path = window.location.pathname;
-        if (!path.startsWith("/login") && !path.startsWith("/signup") && path !== "/") {
-          const returnUrl = encodeURIComponent(path + window.location.search);
-          window.location.href = `/login?redirect=${returnUrl}`;
-        }
-      }
     } else if (response.status === 409 && rawBackendMessage.includes("already been accepted")) {
       friendlyMessage = ErrorDictionary.LISTING_ALREADY_ACCEPTED.message;
     } else if (response.status === 429) {
