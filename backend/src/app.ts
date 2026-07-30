@@ -96,16 +96,10 @@ app.use(
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ limit: "20mb", extended: true }));
 
-const clerkHandler = clerkMiddleware();
-app.use((req: any, res: any, next: any) => {
-  clerkHandler(req, res, (err?: any) => {
-    if (err) {
-      // Allow request to proceed to protect middleware which handles 401
-      return next();
-    }
-    next();
-  });
-});
+const publishableKey = process.env.CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "pk_test_d2hvbGUtaG91bmQtODUuY2xlcmsuYWNjb3VudHMuZGV2JA";
+const secretKey = process.env.CLERK_SECRET_KEY || "sk_test_R8nZtUZfGv7pbYzImfV2tPyh7QqhKUX6W4GZ2QPYhC";
+
+app.use(clerkMiddleware({ publishableKey, secretKey }));
 
 app.use("/api/auth", authRoutes);
 app.use("/api/waste", wasteRoutes);

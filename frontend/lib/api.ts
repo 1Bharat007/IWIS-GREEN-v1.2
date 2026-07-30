@@ -1,7 +1,7 @@
 import { getToken, clearToken } from "./session";
 import { ErrorDictionary } from "./errorDictionary";
 
-const BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api`;
+const BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || "https://iwis-green-v1-2-1.onrender.com"}/api`;
 
 export class ApiError extends Error {
   public statusCode: number;

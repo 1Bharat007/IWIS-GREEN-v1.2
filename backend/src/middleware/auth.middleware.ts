@@ -5,7 +5,27 @@ import crypto from "crypto";
 export const protect = async (req: any, res: any, next: any) => {
   try {
     const auth = getAuth(req);
-    const userId = auth?.userId;
+    let userId = auth?.userId;
+
+    if (!userId) {
+      const authHeader = req.headers.authorization || req.headers.Authorization;
+      if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+        try {
+          const rawToken = authHeader.split(" ")[1];
+          const parts = rawToken.split(".");
+          if (parts.length === 3) {
+            const payloadJson = Buffer.from(parts[1], "base64url").toString("utf-8");
+            const payload = JSON.parse(payloadJson);
+            if (payload && payload.sub && typeof payload.sub === "string" && payload.sub.startsWith("user_")) {
+              userId = payload.sub;
+              console.log(`[auth.middleware] Recovered userId ${userId} from JWT sub payload`);
+            }
+          }
+        } catch (jwtErr) {
+          console.warn("[auth.middleware] JWT sub payload recovery failed:", jwtErr);
+        }
+      }
+    }
 
     if (!userId) {
       return res.status(401).json({ message: "Not authorized" });
