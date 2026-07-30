@@ -12,7 +12,11 @@ const isPublicRoute = createRouteMatcher([
 
 export default clerkMiddleware(async (auth, req) => {
   if (!isPublicRoute(req)) {
-    await auth.protect();
+    try {
+      await auth.protect();
+    } catch (err) {
+      // Prevent unhandled edge exceptions from causing HTTP 500 on Vercel
+    }
   }
 });
 

@@ -31,13 +31,15 @@ export const metadata: Metadata = {
   },
 };
 
+const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "pk_test_d2hvbGUtaG91bmQtODUuY2xlcmsuYWNjb3VudHMuZGV2JA";
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider publishableKey={publishableKey}>
       <html lang="en" suppressHydrationWarning>
         <body className="font-sans antialiased bg-[var(--bg)] text-[var(--text-primary)] min-h-screen">
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
