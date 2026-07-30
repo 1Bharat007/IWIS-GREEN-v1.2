@@ -1,5 +1,8 @@
 {
   "env": {
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_d2hvbGUtaG91bmQtODUuY2xlcmsuYWNjb3VudHMuZGV2JA",
+    "CLERK_SECRET_KEY": "sk_test_R8nZtUZfGv7pbYzImfV2tPyh7QqhKUX6W4GZ2QPYhC",
+    "NEXT_PUBLIC_DEMO_MODE": "false",
     "NEXT_PUBLIC_FIREBASE_API_KEY": "AIzaSyCtS1O6qfwkyPuJwCZMrZVwm2LZ67fRaR4",
     "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "iwis-ec993.firebaseapp.com",
     "NEXT_PUBLIC_FIREBASE_PROJECT_ID": "iwis-ec993",
