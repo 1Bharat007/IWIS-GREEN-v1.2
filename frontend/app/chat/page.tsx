@@ -63,8 +63,17 @@ export default function ChatPage() {
   const endRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<NodeJS.Timeout | null>(null);
   const storageKey = useRef<string>("");
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const loading = chatTask?.status === "running";
+
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (chatTask?.status === "success" && chatTask.payload) {
@@ -134,6 +143,12 @@ export default function ChatPage() {
   const handleSend = useCallback(async (messageText: string) => {
     if (!messageText.trim() || loading) return;
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     let currentThread = threads.find((t) => t.id === activeThreadId);
     let finalThreads = [...threads];
 
@@ -185,45 +200,221 @@ export default function ChatPage() {
     }, 2000);
 
     try {
-      const _response = await apiFetch("/chat", {
-        method: "POST",
-        body: JSON.stringify({ message: messageText.trim(), history }),
-      });
-        const response = _response.data || _response;
-      if (stageRef.current) clearInterval(stageRef.current);
-      
-      // FIX: Update local storage directly in closure so it survives unmounting
-      const saved = localStorage.getItem(storageKey.current);
-      if (saved) {
-        try {
-          const parsedThreads = JSON.parse(saved);
-          const updatedThreads = parsedThreads.map((t: ChatThread) => 
-            t.id === threadId 
-              ? { ...t, messages: [...t.messages, { id: crypto.randomUUID(), role: "assistant", content: response.reply, timestamp: new Date().toISOString() }] } 
-              : t
-          );
-          localStorage.setItem(storageKey.current, JSON.stringify(updatedThreads));
-          setThreads(updatedThreads); // Update state if still mounted
-        } catch {}
+      const token = await getToken();
+      const BASE = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api`;
+
+      let response: Response;
+      try {
+        response = await fetch(`${BASE}/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+          },
+          body: JSON.stringify({ message: messageText.trim(), history }),
+          signal: controller.signal,
+        });
+      } catch (fetchErr: any) {
+        if (fetchErr.name === "AbortError") {
+          console.log("[EcoBot] Fetch aborted by user action.");
+          return;
+        }
+        throw fetchErr;
       }
 
-      completeTask("global_chat", { reply: response.reply, threadId });
+      const contentType = response.headers.get("content-type") || "";
+
+      if (contentType.includes("application/json")) {
+        // Instant non-streamed response (Layer-1 static, Layer-1 cache, Layer-3 RAG)
+        const json = await response.json();
+        if (stageRef.current) clearInterval(stageRef.current);
+
+        if (!response.ok) {
+          throw new ApiError(
+            json.error || json.message || "Request failed",
+            response.status,
+            json.error || json.message
+          );
+        }
+
+        const replyText = json.data?.reply || json.reply || "";
+
+        const saved = localStorage.getItem(storageKey.current);
+        if (saved) {
+          try {
+            const parsedThreads = JSON.parse(saved);
+            const updated = parsedThreads.map((t: ChatThread) =>
+              t.id === threadId
+                ? {
+                    ...t,
+                    messages: [
+                      ...t.messages,
+                      {
+                        id: crypto.randomUUID(),
+                        role: "assistant",
+                        content: replyText,
+                        timestamp: new Date().toISOString(),
+                      },
+                    ],
+                  }
+                : t
+            );
+            localStorage.setItem(storageKey.current, JSON.stringify(updated));
+            setThreads(updated);
+          } catch {}
+        }
+
+        completeTask("global_chat", { reply: replyText, threadId });
+      } else if (contentType.includes("text/event-stream")) {
+        // SSE Streamed response (Layer-4 Gemini Generative Path)
+        if (!response.body) {
+          throw new Error("Streaming body not available");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+        let fullReply = "";
+        const assistantMsgId = crypto.randomUUID();
+        let streamStarted = false;
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith("data:")) continue;
+
+              const dataStr = trimmed.slice(5).trim();
+              if (dataStr === "[DONE]") {
+                break;
+              }
+
+              try {
+                const parsed = JSON.parse(dataStr);
+                if (parsed.error) {
+                  throw new Error(parsed.error);
+                }
+                if (parsed.chunk) {
+                  if (!streamStarted) {
+                    streamStarted = true;
+                    if (stageRef.current) clearInterval(stageRef.current);
+                  }
+                  fullReply += parsed.chunk;
+
+                  // Update message list progressively
+                  setThreads((prevThreads) =>
+                    prevThreads.map((t) => {
+                      if (t.id !== threadId) return t;
+                      const msgs = t.messages;
+                      const hasMsg = msgs.some((m) => m.id === assistantMsgId);
+                      if (hasMsg) {
+                        return {
+                          ...t,
+                          messages: msgs.map((m) =>
+                            m.id === assistantMsgId ? { ...m, content: fullReply } : m
+                          ),
+                        };
+                      } else {
+                        return {
+                          ...t,
+                          messages: [
+                            ...msgs,
+                            {
+                              id: assistantMsgId,
+                              role: "assistant",
+                              content: fullReply,
+                              timestamp: new Date().toISOString(),
+                            },
+                          ],
+                        };
+                      }
+                    })
+                  );
+                }
+              } catch (e: any) {
+                if (e.message !== "Unexpected end of JSON input" && (e.message.includes("error") || !dataStr.startsWith("{"))) {
+                  throw e;
+                }
+              }
+            }
+          }
+
+          if (stageRef.current) clearInterval(stageRef.current);
+
+          if (fullReply.trim()) {
+            const saved = localStorage.getItem(storageKey.current);
+            if (saved) {
+              try {
+                const parsedThreads = JSON.parse(saved);
+                const updated = parsedThreads.map((t: ChatThread) => {
+                  if (t.id !== threadId) return t;
+                  const existing = t.messages.filter((m) => m.id !== assistantMsgId);
+                  return {
+                    ...t,
+                    messages: [
+                      ...existing,
+                      {
+                        id: assistantMsgId,
+                        role: "assistant",
+                        content: fullReply,
+                        timestamp: new Date().toISOString(),
+                      },
+                    ],
+                  };
+                });
+                localStorage.setItem(storageKey.current, JSON.stringify(updated));
+                setThreads(updated);
+              } catch {}
+            }
+            completeTask("global_chat", { reply: fullReply, threadId });
+          } else {
+            throw new Error("No response received from assistant.");
+          }
+        } catch (streamErr: any) {
+          if (reader) reader.cancel();
+          if (streamErr.name === "AbortError") {
+            console.log("[EcoBot] Stream aborted by navigation.");
+            return;
+          }
+          throw streamErr;
+        }
+      } else {
+        throw new Error(`Unexpected Content-Type: ${contentType}`);
+      }
     } catch (error: any) {
       if (stageRef.current) clearInterval(stageRef.current);
       const isNetworkError = error?.statusCode === 0 || error?.message?.includes("Failed to fetch");
-      const errorText = isNetworkError ? "⚡ Server is waking up — please try again." : error instanceof ApiError ? `⚠️ ${error.backendMessage}` : `😔 EcoBot error: ${error?.message || "Unknown error"}`;
+      const errorText = isNetworkError
+        ? "⚡ Server is waking up — please try again."
+        : error instanceof ApiError
+        ? `⚠️ ${error.backendMessage}`
+        : `😔 EcoBot error: ${error?.message || "Unknown error"}`;
+
       failTask("global_chat", errorText);
-      const errMsg: Message = { id: crypto.randomUUID(), role: "assistant", isError: true, timestamp: new Date().toISOString(), content: errorText };
-      
+      const errMsg: Message = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        isError: true,
+        timestamp: new Date().toISOString(),
+        content: errorText,
+      };
+
       const saved = localStorage.getItem(storageKey.current);
       if (saved) {
         try {
           const parsedThreads = JSON.parse(saved);
-          const updatedThreads = parsedThreads.map((t: ChatThread) => 
+          const updatedThreads = parsedThreads.map((t: ChatThread) =>
             t.id === threadId ? { ...t, messages: [...t.messages, errMsg] } : t
           );
           localStorage.setItem(storageKey.current, JSON.stringify(updatedThreads));
-          setThreads(updatedThreads); // Update state if still mounted
+          setThreads(updatedThreads);
         } catch {}
       }
     }

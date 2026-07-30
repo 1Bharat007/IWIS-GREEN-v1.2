@@ -1,5 +1,4 @@
 import { sendSuccess } from "../utils/apiResponse.util";
-import { AppError, ValidationError, AuthenticationError, AuthorizationError, DatabaseError } from "../utils/errors";
 import { Request, Response } from "express";
 import { executeWithModelRouter } from "../utils/ai-router.util";
 import { getLocalResponse } from "../utils/local-kb.util";
@@ -59,7 +58,6 @@ export const handleChat = async (req: any, res: Response) => {
       
       if (ragMatch) {
         // High confidence match! We return the knowledge chunk directly.
-        // The markdown chunks are pre-formatted to be readable.
         finalReply = `${ragMatch.text.split("Information: ")[1]}`;
         source = "layer-3-rag";
         
@@ -70,10 +68,10 @@ export const handleChat = async (req: any, res: Response) => {
     }
 
     // ==========================================
-    // LAYER 4: GEMINI REASONING ENGINE
+    // LAYER 4: GEMINI REASONING ENGINE (STREAMED)
     // ==========================================
     
-    // If we reach here, we need generative AI.
+    // If we reach here, we need generative AI with SSE streaming.
     const systemInstruction = `You are EcoBot, a helpful AI assistant for the IWIS (Integrated Waste Intelligence System) platform. 
 Your purpose is to help users with: climate change, environmental sustainability, recycling best practices, waste management, eco-friendly habits, and how to earn/use Green Points in IWIS.
 Keep responses concise (2-4 sentences), factual, and actionable.
@@ -99,17 +97,20 @@ Always be encouraging and positive.`;
       contents.push({ role: "user", parts: [{ text: message }] });
     }
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => {
-        const err: any = new Error("TIMEOUT");
-        err.status = 504; 
-        reject(err);
-      }, 15000)
-    );
+    const TIMEOUT_MS = 15000;
+    let timeoutId: NodeJS.Timeout | null = null;
 
-    const geminiPromise = executeWithModelRouter(
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        const err: any = new Error("TIMEOUT");
+        err.status = 504;
+        reject(err);
+      }, TIMEOUT_MS);
+    });
+
+    const geminiStreamPromise = executeWithModelRouter(
       (ai, modelName) =>
-        ai.models.generateContent({
+        ai.models.generateContentStream({
           model: modelName,
           contents,
           config: { systemInstruction },
@@ -118,17 +119,42 @@ Always be encouraging and positive.`;
       ["gemini-2.5-flash", "gemini-2.0-flash-lite-001"]
     );
 
-    const response = await Promise.race([geminiPromise, timeoutPromise]);
-    finalReply = (response as any).text;
+    const responseStream = await Promise.race([geminiStreamPromise, timeoutPromise]);
+    if (timeoutId) clearTimeout(timeoutId);
 
-    if (!finalReply) {
-      throw new Error("Empty response from AI");
+    // Set Server-Sent Events headers
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
+
+    let accumulatedText = "";
+    let firstChunkReceived = false;
+
+    try {
+      for await (const chunk of responseStream) {
+        const text = chunk.text;
+        if (text) {
+          firstChunkReceived = true;
+          accumulatedText += text;
+          res.write(`data: ${JSON.stringify({ chunk: text })}\n\n`);
+        }
+      }
+
+      if (!firstChunkReceived || !accumulatedText.trim()) {
+        throw new Error("Empty response stream from AI");
+      }
+
+      // Cache the complete generative response
+      aiCache.set(message, accumulatedText);
+
+      res.write("data: [DONE]\n\n");
+      res.end();
+    } catch (streamError: any) {
+      console.error("[CHAT CONTROLLER STREAM ERROR]:", streamError?.message);
+      res.write(`data: ${JSON.stringify({ error: streamError?.message || "Generation interrupted" })}\n\n`);
+      res.end();
     }
-
-    // Cache the expensive generative response
-    aiCache.set(message, finalReply);
-
-    sendSuccess(res, { reply: finalReply, source });
   } catch (error: any) {
     console.error("========================");
     console.error("[CHAT CONTROLLER ERROR]");
@@ -137,10 +163,15 @@ Always be encouraging and positive.`;
     console.error("Stack:", error?.stack);
     console.error("========================");
 
-    res.status(500).json({
-      error: "EcoBot is experiencing exceptionally high demand. Please try again in a few moments.",
-      retryable: true,
-      debug: error?.message
-    });
+    if (res.headersSent) {
+      res.write(`data: ${JSON.stringify({ error: error?.message || "EcoBot error" })}\n\n`);
+      res.end();
+    } else {
+      res.status(500).json({
+        error: "EcoBot is experiencing exceptionally high demand. Please try again in a few moments.",
+        retryable: true,
+        debug: error?.message
+      });
+    }
   }
 };
