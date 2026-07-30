@@ -1,24 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;1,14..32,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Design Tokens ──────────────────────────────────────────── */
+/* ─── Premium Design Tokens ──────────────────────────────────────────── */
 :root {
-  --bg:              #fafafa;
+  --bg:              #f8fafc;
   --surface:         #ffffff;
-  --surface-raised:  #f4f4f5;
-  --border:          #e4e4e7;
-  --border-strong:   #d4d4d8;
-  --text-primary:    #09090b;
-  --text-secondary:  #71717a;
-  --text-tertiary:   #a1a1aa;
-  --accent:          #16a34a;
-  --accent-hover:    #15803d;
-  --accent-subtle:   #f0fdf4;
-  --accent-text:     #15803d;
-  --accent-border:   #bbf7d0;
+  --surface-raised:  #f1f5f9;
+  --border:          #e2e8f0;
+  --border-strong:   #cbd5e1;
+  --text-primary:    #0f172a;
+  --text-secondary:  #475569;
+  --text-tertiary:   #94a3b8;
+  --accent:          #059669;
+  --accent-hover:    #047857;
+  --accent-subtle:   #ecfdf5;
+  --accent-text:     #047857;
+  --accent-border:   #a7f3d0;
   --destructive:     #dc2626;
   --destructive-bg:  #fef2f2;
   --destructive-border: #fecaca;
@@ -26,32 +26,42 @@
   --warning-bg:      #fffbeb;
   --info:            #2563eb;
   --info-bg:         #eff6ff;
+  --glass-bg:        rgba(255, 255, 255, 0.85);
+  --glass-border:    rgba(226, 232, 240, 0.8);
+  --shadow-sm:       0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md:       0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg:       0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
 }
 
 .dark {
-  --bg:              #2a2a38;
-  --surface:         #111113;
-  --surface-raised:  #18181b;
-  --border:          #27272a;
-  --border-strong:   #3f3f46;
-  --text-primary:    #fafafa;
-  --text-secondary:  #a1a1aa;
-  --text-tertiary:   #71717a;
-  --accent:          #16a34a;
-  --accent-hover:    #22c55e;
-  --accent-subtle:   #052e16;
-  --accent-text:     #4ade80;
-  --accent-border:   #166534;
-  --destructive:     #ef4444;
-  --destructive-bg:  #1c0606;
-  --destructive-border: #7f1d1d;
-  --warning:         #f59e0b;
-  --warning-bg:      #1c1409;
-  --info:            #3b82f6;
-  --info-bg:         #0c1a2e;
+  --bg:              #090d16;
+  --surface:         #111726;
+  --surface-raised:  #1a2338;
+  --border:          #1e293b;
+  --border-strong:   #334155;
+  --text-primary:    #f8fafc;
+  --text-secondary:  #94a3b8;
+  --text-tertiary:   #64748b;
+  --accent:          #10b981;
+  --accent-hover:    #34d399;
+  --accent-subtle:   #064e3b;
+  --accent-text:     #34d399;
+  --accent-border:   #065f46;
+  --destructive:     #f87171;
+  --destructive-bg:  #450a0a;
+  --destructive-border: #991b1b;
+  --warning:         #fbbf24;
+  --warning-bg:      #451a03;
+  --info:            #60a5fa;
+  --info-bg:         #172554;
+  --glass-bg:        rgba(17, 23, 38, 0.85);
+  --glass-border:    rgba(30, 41, 59, 0.8);
+  --shadow-sm:       0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md:       0 4px 6px -1px rgba(0, 0, 0, 0.35), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --shadow-lg:       0 10px 25px -3px rgba(0, 0, 0, 0.5), 0 4px 10px -4px rgba(0, 0, 0, 0.3);
 }
 
-/* ─── Base ───────────────────────────────────────────────────── */
+/* ─── Base Typography & Body ───────────────────────────────────── */
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -60,22 +70,58 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 html, body {
   background: var(--bg);
   color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* ─── Modern Utility Classes ─────────────────────────────────── */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-emerald-text {
+  background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.glow-emerald {
+  box-shadow: 0 0 20px -5px rgba(16, 185, 129, 0.3);
 }
 
 /* ─── Animations ─────────────────────────────────────────────── */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-4px); }
+  from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
 }
 
 @keyframes scanline {
@@ -85,11 +131,12 @@ html, body {
   100% { top: 100%; opacity: 0; }
 }
 
-.animate-fadeIn   { animation: fadeIn   0.18s ease forwards; }
-.animate-slideDown{ animation: slideDown 0.15s ease forwards; }
-.animate-scanline { animation: scanline  2s cubic-bezier(0.4,0,0.2,1) infinite; }
+.animate-fadeIn   { animation: fadeIn   0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-slideDown{ animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-pulseGlow{ animation: pulseGlow 2.5s ease-in-out infinite; }
+.animate-scanline { animation: scanline  2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
 
 /* ─── Scrollbar ──────────────────────────────────────────────── */
-::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar       { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 9999px; }
