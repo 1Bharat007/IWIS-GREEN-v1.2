@@ -378,6 +378,23 @@ export const initDB = async () => {
 };
 
 export const getDB = async () => {
+  // ─── Postgres feature flag ────────────────────────────────────────────────
+  // When USE_POSTGRES=true, return a thin shim that delegates to the pg adapter
+  // so every controller's existing db.get/run/all calls route to Postgres
+  // without any controller file needing to change.
+  // When the flag is unset or false, we fall through to the SQLite path below.
+  if (process.env.USE_POSTGRES === "true") {
+    // Lazy-import so pg is not required unless the flag is set.
+    // This keeps the SQLite path 100% unchanged if DATABASE_URL is absent.
+    const pgAdapter = await import("./db-adapter");
+    return {
+      get: (sql: string, params?: any[]) => pgAdapter.get(sql, params),
+      run: (sql: string, params?: any[]) => pgAdapter.run(sql, params),
+      all: (sql: string, params?: any[]) => pgAdapter.all(sql, params),
+    };
+  }
+
+  // ─── SQLite path (unchanged) ─────────────────────────────────────────────
   if (!dbInstance) {
     await initDB();
   }

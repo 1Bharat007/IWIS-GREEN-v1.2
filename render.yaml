@@ -1,3 +1,9 @@
+databases:
+  - name: iwis-postgres
+    databaseName: iwis_db
+    plan: free          # upgrade to starter/standard for production
+    # Render automatically provisions DATABASE_URL and links it to the service below
+
 services:
   - type: web
     name: iwis-backend
@@ -8,9 +14,38 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+
+      # ── Postgres ──────────────────────────────────────────────────────────
+      - key: DATABASE_URL
+        fromDatabase:
+          name: iwis-postgres
+          property: connectionString
+      - key: USE_POSTGRES
+        value: "true"
+
+      # ── Clerk Auth ────────────────────────────────────────────────────────
+      # sync:false = value entered in Render dashboard, never committed to repo
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false
+
+      # ── AI ────────────────────────────────────────────────────────────────
       - key: GEMINI_API_KEY
-        sync: false   # You'll enter this in Render dashboard
+        sync: false
+      - key: GEMINI_API_KEY_2
+        sync: false
+      - key: GEMINI_API_KEY_3
+        sync: false
+
+      # ── App ───────────────────────────────────────────────────────────────
       - key: FRONTEND_URL
-        sync: false   # You'll enter your Vercel URL here
-      - key: JWT_SECRET
-        generateValue: true  # Render auto-generates a secure random value
+        sync: false     # Set to your Vercel URL in Render dashboard
+      - key: ENABLE_RAG
+        value: "true"
+      - key: ENABLE_PHONE_OTP
+        value: "false"
+
+      # ── REMOVED: JWT_SECRET ───────────────────────────────────────────────
+      # JWT_SECRET is no longer used — authentication is handled by Clerk.
+      # Removed to avoid a confusing dead variable in production config.
