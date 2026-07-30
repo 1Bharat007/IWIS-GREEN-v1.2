@@ -61,9 +61,9 @@ export default function DashboardPage() {
         const notifList = Array.isArray(notifRes) ? notifRes : [];
 
         let finalData: DashboardData = {
-          totalEarnings: analyticsRes?.estimatedEarnings || 0,
+          totalEarnings: (analyticsRes?.estimatedEarnings && analyticsRes.estimatedEarnings > 0) ? analyticsRes.estimatedEarnings : (meRes?.totalEarnings || 0),
           totalRecycledKg: listingsList.filter((l: any) => l.status === "completed").reduce((acc: number, l: any) => acc + (l.estimatedWeightKg || 0), 0),
-          co2Saved: analyticsRes?.totalCO2 || 0,
+          co2Saved: (analyticsRes?.totalCO2 && analyticsRes.totalCO2 > 0) ? analyticsRes.totalCO2 : (meRes?.totalCO2 || 0),
           activeListings: activeCount,
           recentNotifications: notifList.slice(0, 3)
         };
