@@ -33,11 +33,7 @@ export default function RecyclerFeedPage() {
     apiFetch("/listings/nearby?lat=32.7266&lng=74.8570&radiusKm=20")
       .then((res: any) => {
         const data = Array.isArray(res) ? res : (res?.data || []);
-        if (data.length === 0 && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
-          setListings(demoRecyclerFeed);
-        } else {
-          setListings(Array.isArray(data) ? data : []);
-        }
+        setListings(Array.isArray(data) ? data : []);
       })
       .catch((err) => setError(err.message || "Failed to load feed."))
       .finally(() => setLoading(false));

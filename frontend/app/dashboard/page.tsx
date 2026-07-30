@@ -68,11 +68,7 @@ export default function DashboardPage() {
           recentNotifications: notifList.slice(0, 3)
         };
 
-        if (process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
-          if (finalData.totalEarnings === 0 && finalData.recentNotifications.length === 0) {
-            finalData = demoDashboardData;
-          }
-        }
+
 
         setData(finalData);
       } catch (err) {

@@ -114,11 +114,7 @@ export default function ScanPage() {
         const res = await apiFetch("/waste/history?limit=10");
         const data = res?.data || res || {};
         const history = Array.isArray(data.history) ? data.history : [];
-        if (history.length === 0 && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
-          setRecentScans(demoHistoryScans);
-        } else {
-          setRecentScans(history);
-        }
+        setRecentScans(history);
       } catch (err) {
         console.error("Failed to load history", err);
       } finally {

@@ -36,11 +36,7 @@ export default function SellHistoryPage() {
       .then((res) => {
         const raw = res?.data || res;
         const list = Array.isArray(raw) ? raw : [];
-        if (list.length === 0 && process.env.NEXT_PUBLIC_DEMO_MODE === "true") {
-          setListings(demoListingsHistory);
-        } else {
-          setListings(list);
-        }
+        setListings(list);
       })
       .catch((err) => setError(err.message || "Failed to load history."))
       .finally(() => setLoading(false));
