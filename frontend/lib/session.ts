@@ -1,14 +1,20 @@
 export const getToken = async (): Promise<string | null> => {
   if (typeof window === "undefined") return null;
-  if ((window as any).Clerk?.session) {
-    try {
-      const token = await (window as any).Clerk.session.getToken();
-      return token || null;
-    } catch (err) {
-      console.warn("[session] Error getting Clerk session token:", err);
-      return null;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if ((window as any).Clerk?.session) {
+      try {
+        const token = await (window as any).Clerk.session.getToken();
+        if (token) return token;
+      } catch (err) {
+        console.warn("[session] Error getting Clerk session token:", err);
+      }
+    }
+    if (attempt < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 150));
     }
   }
+
   return null;
 };
 
