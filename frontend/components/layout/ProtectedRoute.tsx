@@ -18,7 +18,14 @@ export default function ProtectedRoute({
     }
   }, [isLoaded, isSignedIn, router]);
 
-  if (!isLoaded || !isSignedIn) return null;
+  if (!isLoaded || !isSignedIn) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+        <span className="w-9 h-9 border-3 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs text-[var(--text-tertiary)] font-medium">Verifying session...</p>
+      </div>
+    );
+  }
 
   return <>{children}</>;
 }
