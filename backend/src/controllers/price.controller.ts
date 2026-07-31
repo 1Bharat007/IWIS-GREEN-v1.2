@@ -32,6 +32,7 @@ export const getPrices = async (req: Request, res: Response) => {
     
     sendSuccess(res, prices);
   } catch (err) {
+    if (err instanceof AppError) throw err;
     console.error("[getPrices] error:", err);
     throw new DatabaseError("Failed to fetch prices.");
   }
@@ -71,6 +72,7 @@ export const updatePrice = async (req: any, res: Response) => {
     const updated = await db.get("SELECT * FROM scrap_prices WHERE id = ?", id);
     sendSuccess(res, updated);
   } catch (err) {
+    if (err instanceof AppError) throw err;
     console.error("[updatePrice] error:", err);
     throw new DatabaseError("Failed to update price.");
   }

@@ -20,6 +20,7 @@ export const getMyTransactions = async (req: any, res: Response) => {
 
     sendSuccess(res, transactions);
   } catch (err) {
+    if (err instanceof AppError) throw err;
     console.error("[getMyTransactions] error:", err);
     throw new DatabaseError("Failed to fetch transactions.");
   }
@@ -50,6 +51,7 @@ export const getTransactionDetails = async (req: any, res: Response) => {
 
     sendSuccess(res, transaction);
   } catch (err) {
+    if (err instanceof AppError) throw err;
     console.error("[getTransactionDetails] error:", err);
     throw new DatabaseError("Failed to fetch transaction details.");
   }
@@ -108,6 +110,7 @@ export const getEarningsSummary = async (req: any, res: Response) => {
       });
     }
   } catch (err) {
+    if (err instanceof AppError) throw err;
     console.error("[getEarningsSummary] error:", err);
     throw new DatabaseError("Failed to fetch earnings summary.");
   }
@@ -146,6 +149,7 @@ export const submitFeedback = async (req: any, res: Response) => {
 
     sendSuccess(res, { message: "Feedback submitted successfully." });
   } catch (err) {
+    if (err instanceof AppError) throw err;
     console.error("[submitFeedback] error:", err);
     throw new DatabaseError("Failed to submit feedback.");
   }

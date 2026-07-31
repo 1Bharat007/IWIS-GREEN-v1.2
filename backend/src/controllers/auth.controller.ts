@@ -1,4 +1,4 @@
-import { ValidationError, DatabaseError } from "../utils/errors";
+import { AppError, ValidationError, DatabaseError } from "../utils/errors";
 import { sendSuccess } from "../utils/apiResponse.util";
 import { Response } from "express";
 import { getDB } from "../db";
@@ -45,6 +45,7 @@ export const getMe = async (req: any, res: Response) => {
       recyclerRating
     });
   } catch (err) {
+    if (err instanceof AppError) throw err;
     console.error("[getMe] error:", err);
     throw new DatabaseError("Failed to load profile.");
   }
