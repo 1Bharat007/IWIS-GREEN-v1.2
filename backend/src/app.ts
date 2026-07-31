@@ -96,8 +96,12 @@ app.use(
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ limit: "20mb", extended: true }));
 
-const publishableKey = process.env.CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "pk_test_d2hvbGUtaG91bmQtODUuY2xlcmsuYWNjb3VudHMuZGV2JA";
-const secretKey = process.env.CLERK_SECRET_KEY || "sk_test_R8nZtUZfGv7pbYzImfV2tPyh7QqhKUX6W4GZ2QPYhC";
+const publishableKey = process.env.CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const secretKey = process.env.CLERK_SECRET_KEY;
+
+if (!secretKey) {
+  throw new Error("CLERK_SECRET_KEY is not set — refusing to start.");
+}
 
 app.use(clerkMiddleware({ publishableKey, secretKey }));
 

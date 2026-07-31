@@ -13,7 +13,10 @@ export const protect = async (req: any, res: any, next: any) => {
         const rawToken = authHeader.split(" ")[1];
         if (rawToken) {
           try {
-            const secretKey = process.env.CLERK_SECRET_KEY || "sk_test_R8nZtUZfGv7pbYzImfV2tPyh7QqhKUX6W4GZ2QPYhC";
+            const secretKey = process.env.CLERK_SECRET_KEY;
+            if (!secretKey) {
+              throw new Error("CLERK_SECRET_KEY is not set — refusing to process auth request.");
+            }
             const verifiedPayload = await verifyToken(rawToken, { secretKey });
             if (verifiedPayload && verifiedPayload.sub) {
               userId = verifiedPayload.sub;
