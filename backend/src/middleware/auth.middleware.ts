@@ -1,4 +1,4 @@
-import { getAuth, clerkClient } from "@clerk/express";
+import { getAuth, clerkClient, verifyToken } from "@clerk/express";
 import { getDB } from "../db";
 import crypto from "crypto";
 
@@ -10,19 +10,18 @@ export const protect = async (req: any, res: any, next: any) => {
     if (!userId) {
       const authHeader = req.headers.authorization || req.headers.Authorization;
       if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
-        try {
-          const rawToken = authHeader.split(" ")[1];
-          const parts = rawToken.split(".");
-          if (parts.length === 3) {
-            const payloadJson = Buffer.from(parts[1], "base64url").toString("utf-8");
-            const payload = JSON.parse(payloadJson);
-            if (payload && payload.sub && typeof payload.sub === "string" && payload.sub.startsWith("user_")) {
-              userId = payload.sub;
-              console.log(`[auth.middleware] Recovered userId ${userId} from JWT sub payload`);
+        const rawToken = authHeader.split(" ")[1];
+        if (rawToken) {
+          try {
+            const secretKey = process.env.CLERK_SECRET_KEY || "sk_test_R8nZtUZfGv7pbYzImfV2tPyh7QqhKUX6W4GZ2QPYhC";
+            const verifiedPayload = await verifyToken(rawToken, { secretKey });
+            if (verifiedPayload && verifiedPayload.sub) {
+              userId = verifiedPayload.sub;
+              console.log(`[auth.middleware] Cryptographically verified Clerk session for user ${userId}`);
             }
+          } catch (verifyErr: any) {
+            console.warn("[auth.middleware] Clerk verifyToken signature validation failed:", verifyErr.message || verifyErr);
           }
-        } catch (jwtErr) {
-          console.warn("[auth.middleware] JWT sub payload recovery failed:", jwtErr);
         }
       }
     }
