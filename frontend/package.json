@@ -24,6 +24,7 @@
     "recharts": "^3.7.0"
   },
   "devDependencies": {
+    "@clerk/testing": "^2.2.16",
     "@playwright/test": "^1.61.1",
     "@types/leaflet": "^1.9.16",
     "@types/node": "^20.19.43",
