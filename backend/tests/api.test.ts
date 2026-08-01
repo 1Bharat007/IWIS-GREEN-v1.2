@@ -1,7 +1,6 @@
 import "dotenv/config";
 import request from "supertest";
 import app from "../src/app";
-import { getDB } from "../src/db";
 import { createClerkClient } from "@clerk/backend";
 
 describe("IWIS API Comprehensive Integration & Security Test Suite", () => {
@@ -67,48 +66,56 @@ describe("IWIS API Comprehensive Integration & Security Test Suite", () => {
     });
   });
 
-  describe("Real Authenticated Session Coverage & JIT Provisioning Deduplication", () => {
-    let testUserId: string;
+  describe("Real Authenticated Session End-to-End Coverage (HTTP Supertest Layer)", () => {
+    let realToken: string;
 
     beforeAll(async () => {
-      const db = await getDB();
-      testUserId = "user_test_ci_automation_001";
-      // Ensure clean state for test user
-      await db.run("DELETE FROM users WHERE clerkId = ?", testUserId);
+      const secretKey = process.env.CLERK_SECRET_KEY;
+      if (!secretKey) throw new Error("CLERK_SECRET_KEY required for integration tests");
+      const client = createClerkClient({ secretKey });
+      const users = await client.users.getUserList({ limit: 1 });
+      const userId = users.data[0]?.id || "user_3H1xpSJxk4tykF1kKqOMfdcmrQ3";
+      const session = await client.sessions.createSession({ userId });
+      const tokenObj = await client.sessions.getToken(session.id);
+      realToken = tokenObj.jwt;
     });
 
-    it("GET /api/auth/me with authenticated session provisions user and returns 200 OK", async () => {
-      const db = await getDB();
-      // Simulate authenticated middleware user context
-      const existing = await db.get("SELECT * FROM users WHERE clerkId = ?", testUserId);
-      expect(existing).toBeUndefined();
+    it("GET /api/auth/me with real Clerk session JWT passes verification and provisions user (HTTP 200)", async () => {
+      const res = await request(app)
+        .get("/api/auth/me")
+        .set("Authorization", `Bearer ${realToken}`);
 
-      // Perform JIT insertion
-      const createdAt = new Date().toISOString();
-      await db.run(
-        "INSERT INTO users (id, clerkId, email, role, displayName, createdAt) VALUES (?, ?, ?, ?, ?, ?)",
-        ["test-uuid-001", testUserId, "testuser@iwis.org", "citizen", "Test Citizen", createdAt]
-      );
-
-      const userRow = await db.get("SELECT * FROM users WHERE clerkId = ?", testUserId);
-      expect(userRow).toBeDefined();
-      expect(userRow.clerkId).toBe(testUserId);
-      expect(userRow.email).toBe("testuser@iwis.org");
-      expect(userRow.role).toBe("citizen");
+      expect(res.status).toBe(200);
+      const data = res.body?.data || res.body;
+      expect(data?.id).toBeDefined();
+      expect(data?.email).toBeDefined();
     });
 
-    it("Repeat call to GET /api/auth/me matches existing row without creating duplicate user records", async () => {
-      const db = await getDB();
-      const allMatching = await db.all("SELECT id FROM users WHERE clerkId = ?", testUserId);
-      expect(allMatching.length).toBe(1);
-      expect(allMatching[0].id).toBe("test-uuid-001");
+    it("Repeat call to GET /api/auth/me with same token matches existing user row without creating duplicates", async () => {
+      const res1 = await request(app)
+        .get("/api/auth/me")
+        .set("Authorization", `Bearer ${realToken}`);
+
+      const res2 = await request(app)
+        .get("/api/auth/me")
+        .set("Authorization", `Bearer ${realToken}`);
+
+      expect(res1.status).toBe(200);
+      expect(res2.status).toBe(200);
+
+      const user1 = res1.body?.data || res1.body;
+      const user2 = res2.body?.data || res2.body;
+
+      expect(user1?.id).toBeDefined();
+      expect(user2?.id).toBe(user1?.id);
     });
 
-    it("Protected route GET /api/transactions/summary handles authenticated request correctly", async () => {
-      const db = await getDB();
-      const userRow = await db.get("SELECT * FROM users WHERE clerkId = ?", testUserId);
-      expect(userRow).toBeDefined();
-      expect(userRow.role).toBe("citizen");
+    it("GET /api/transactions/summary with real token propagates user context cleanly (HTTP 200)", async () => {
+      const res = await request(app)
+        .get("/api/transactions/summary")
+        .set("Authorization", `Bearer ${realToken}`);
+
+      expect(res.status).toBe(200);
     });
   });
 
