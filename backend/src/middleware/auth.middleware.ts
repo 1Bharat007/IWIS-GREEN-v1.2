@@ -17,7 +17,7 @@ export const protect = async (req: any, res: any, next: any) => {
             if (!secretKey) {
               throw new Error("CLERK_SECRET_KEY is not set — refusing to process auth request.");
             }
-            const verifiedPayload = await verifyToken(rawToken, { secretKey });
+            const verifiedPayload = await verifyToken(rawToken, { secretKey, clockSkewInMs: 300000 });
             if (verifiedPayload && verifiedPayload.sub) {
               userId = verifiedPayload.sub;
               console.log(`[auth.middleware] Cryptographically verified Clerk session for user ${userId}`);

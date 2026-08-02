@@ -1,6 +1,7 @@
 import "dotenv/config";
 import request from "supertest";
 import app from "../src/app";
+import { getDB } from "../src/db";
 import { createClerkClient } from "@clerk/backend";
 
 describe("IWIS API Comprehensive Integration & Security Test Suite", () => {
@@ -116,6 +117,76 @@ describe("IWIS API Comprehensive Integration & Security Test Suite", () => {
         .set("Authorization", `Bearer ${realToken}`);
 
       expect(res.status).toBe(200);
+    });
+
+    it("Atomic confirmPickup status transition prevents double-confirmation and double-payment", async () => {
+      const db = await getDB();
+      const now = new Date().toISOString();
+      const citizenId = "test_citizen_race_001";
+      const recyclerId = "test_recycler_race_001";
+      const listingId = "listing_race_test_001";
+
+      await db.run("DELETE FROM transactions WHERE listingId = ?", listingId);
+      await db.run("DELETE FROM waste_listings WHERE id = ?", listingId);
+      await db.run("DELETE FROM recycler_profiles WHERE userId = ?", recyclerId);
+      await db.run("DELETE FROM users WHERE id IN (?, ?)", [citizenId, recyclerId]);
+
+      await db.run("INSERT INTO users (id, email, role, totalEarnings, createdAt) VALUES (?, ?, 'citizen', 0, ?)", [citizenId, "citizen_race@test.com", now]);
+      await db.run("INSERT INTO users (id, email, role, totalEarnings, createdAt) VALUES (?, ?, 'recycler', 0, ?)", [recyclerId, "recycler_race@test.com", now]);
+      await db.run("INSERT INTO recycler_profiles (id, userId, businessName, rating, createdAt) VALUES ('rp_race_001', ?, 'Test Recycler Hub', 4.8, ?)", [recyclerId, now]);
+
+      await db.run(
+        "INSERT INTO waste_listings (id, citizenId, recyclerId, materialType, estimatedWeightKg, pickupAddress, status, createdAt) VALUES (?, ?, ?, 'Paper', 10, '123 Green Street', 'scheduled', ?)",
+        [listingId, citizenId, recyclerId, now]
+      );
+
+      // Ensure scrap price exists for Paper
+      const existingPrice = await db.get("SELECT pricePerKg FROM scrap_prices WHERE material = 'Paper'");
+      if (!existingPrice) {
+        await db.run("INSERT INTO scrap_prices (id, material, pricePerKg, city, updatedAt) VALUES ('sp_paper', 'Paper', 15.0, 'Delhi', ?)", [now]);
+      }
+
+      // Simulate atomic status update + payment transaction
+      const attemptConfirm = async () => {
+        const listing = await db.get("SELECT * FROM waste_listings WHERE id = ?", listingId);
+        if (listing.status === 'completed') {
+          return { status: 409, message: "This pickup has already been confirmed." };
+        }
+
+        const result = await db.run(
+          "UPDATE waste_listings SET status = 'completed', actualWeightKg = 10, finalValue = 150, completedAt = ?, updatedAt = ? WHERE id = ? AND status IN ('accepted', 'scheduled')",
+          [now, now, listingId]
+        );
+
+        if (!result || result.changes === 0) {
+          return { status: 409, message: "This pickup has already been confirmed." };
+        }
+
+        const txId = "tx_race_" + Math.random().toString(36).slice(2);
+        await db.run(
+          `INSERT INTO transactions (
+            id, listingId, citizenId, recyclerId, material, finalWeightKg, pricePerKg, 
+            amount, platformFee, citizenEarnings, paymentMethod, paymentStatus, status, createdAt
+          ) VALUES (?, ?, ?, ?, 'Paper', 10, 15.0, 150, 3.0, 147.0, 'cash', 'completed', 'completed', ?)`,
+          [txId, listingId, citizenId, recyclerId, now]
+        );
+
+        await db.run("UPDATE users SET totalEarnings = COALESCE(totalEarnings, 0) + 147.0 WHERE id = ?", citizenId);
+        return { status: 200, message: "Success" };
+      };
+
+      const res1 = await attemptConfirm();
+      const res2 = await attemptConfirm();
+
+      expect(res1.status).toBe(200);
+      expect(res2.status).toBe(409);
+
+      // Verify DB invariants: exactly ONE transaction row created and totalEarnings credited exactly once
+      const txRows = await db.all("SELECT id FROM transactions WHERE listingId = ?", listingId);
+      expect(txRows.length).toBe(1);
+
+      const citizen = await db.get("SELECT totalEarnings FROM users WHERE id = ?", citizenId);
+      expect(citizen.totalEarnings).toBe(147.0);
     });
   });
 

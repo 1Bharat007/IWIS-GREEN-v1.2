@@ -243,16 +243,24 @@ export const confirmPickup = async (req: any, res: Response) => {
     const { id } = req.params;
     const { actualWeightKg, pickupPhotoUrl, paymentMethod = 'cash' } = req.body;
     const weight = parseFloat(actualWeightKg);
+
     if (isNaN(weight) || weight <= 0) {
       throw new ValidationError("Invalid weight. Must be greater than 0.");
+    }
+    if (weight > 500) {
+      throw new ValidationError("Actual weight exceeds the 500kg single pickup limit.");
     }
 
     const db = await getDB();
     const listing = await db.get("SELECT * FROM waste_listings WHERE id = ?", id);
     if (!listing) throw new ValidationError("Not found.");
     if (listing.recyclerId !== req.user.id) throw new AuthorizationError("Not your pickup.");
-    if (listing.status === 'completed') throw new ValidationError("Listing already completed.");
-    if (listing.status !== 'scheduled' && listing.status !== 'accepted') throw new ValidationError("Invalid status.");
+    if (listing.status === 'completed') {
+      return res.status(409).json({ message: "This pickup has already been confirmed." });
+    }
+    if (listing.status !== 'scheduled' && listing.status !== 'accepted') {
+      throw new ValidationError("Listing status must be accepted or scheduled to confirm pickup.");
+    }
 
     // Query Scrap Price Engine
     const priceRecord = await db.get("SELECT pricePerKg FROM scrap_prices WHERE material = ? LIMIT 1", listing.materialType);
@@ -264,41 +272,58 @@ export const confirmPickup = async (req: any, res: Response) => {
     const totalAmount = weight * pricePerKg;
     const platformFee = totalAmount * 0.02;
     const citizenEarnings = totalAmount - platformFee;
-
     const now = new Date().toISOString();
-
-    await db.run(
-      "UPDATE waste_listings SET status = 'completed', actualWeightKg = ?, pickupPhotoUrl = ?, finalValue = ?, completedAt = ?, updatedAt = ? WHERE id = ?",
-      [weight, pickupPhotoUrl || null, totalAmount, now, now, id]
-    );
-
     const txId = crypto.randomUUID();
-    await db.run(
-      `INSERT INTO transactions (
-        id, listingId, citizenId, recyclerId, material, finalWeightKg, pricePerKg, 
-        amount, platformFee, citizenEarnings, paymentMethod, paymentStatus, status, createdAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [txId, id, listing.citizenId, req.user.id, listing.materialType, weight, pricePerKg, totalAmount, platformFee, citizenEarnings, paymentMethod, 'completed', 'completed', now]
-    );
 
-    await db.run(
-      "UPDATE users SET totalEarnings = COALESCE(totalEarnings, 0) + ? WHERE id = ?",
-      [citizenEarnings, listing.citizenId]
-    );
+    // 1 & 2. Atomic Status Transition + DB Transaction (BEGIN / COMMIT / ROLLBACK)
+    await db.run("BEGIN TRANSACTION");
+    try {
+      const result = await db.run(
+        "UPDATE waste_listings SET status = 'completed', actualWeightKg = ?, pickupPhotoUrl = ?, finalValue = ?, completedAt = ?, updatedAt = ? WHERE id = ? AND status IN ('accepted', 'scheduled')",
+        [weight, pickupPhotoUrl || null, totalAmount, now, now, id]
+      );
+
+      if (!result || result.changes === 0) {
+        await db.run("ROLLBACK");
+        return res.status(409).json({ message: "This pickup has already been confirmed." });
+      }
+
+      await db.run(
+        `INSERT INTO transactions (
+          id, listingId, citizenId, recyclerId, material, finalWeightKg, pricePerKg, 
+          amount, platformFee, citizenEarnings, paymentMethod, paymentStatus, status, createdAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [txId, id, listing.citizenId, req.user.id, listing.materialType, weight, pricePerKg, totalAmount, platformFee, citizenEarnings, paymentMethod, 'completed', 'completed', now]
+      );
+
+      await db.run(
+        "UPDATE users SET totalEarnings = COALESCE(totalEarnings, 0) + ? WHERE id = ?",
+        [citizenEarnings, listing.citizenId]
+      );
+
+      await db.run("COMMIT");
+    } catch (txErr) {
+      await db.run("ROLLBACK");
+      throw txErr;
+    }
 
     const citizenUser = await db.get("SELECT displayName, upiId FROM users WHERE id = ?", listing.citizenId);
 
-    // Notify citizen
-    await createNotification(
-      listing.citizenId,
-      "Pickup Completed",
-      `Your waste was picked up successfully. You earned ₹${citizenEarnings.toFixed(2)}.`
-    );
-    await createNotification(
-      listing.citizenId,
-      "Payment Recorded",
-      `A ${paymentMethod === 'upi' ? 'UPI' : 'cash'} payment of ₹${citizenEarnings.toFixed(2)} was recorded for your listing.`
-    );
+    // 3. Isolated Notification Handling (Does NOT block or fail payment response)
+    try {
+      await createNotification(
+        listing.citizenId,
+        "Pickup Completed",
+        `Your waste was picked up successfully. You earned ₹${citizenEarnings.toFixed(2)}.`
+      );
+      await createNotification(
+        listing.citizenId,
+        "Payment Recorded",
+        `A ${paymentMethod === 'upi' ? 'UPI' : 'cash'} payment of ₹${citizenEarnings.toFixed(2)} was recorded for your listing.`
+      );
+    } catch (notifErr) {
+      console.error("[confirmPickup] Non-fatal notification failure:", notifErr);
+    }
 
     sendSuccess(res, {
       message: "Pickup confirmed and transaction generated.",
@@ -309,6 +334,7 @@ export const confirmPickup = async (req: any, res: Response) => {
       citizenUpiId: citizenUser?.upiId || null
     });
   } catch (err) {
+    if (err instanceof AppError) throw err;
     console.error("[confirmPickup] error:", err);
     throw new DatabaseError("Failed to confirm pickup.");
   }
