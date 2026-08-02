@@ -2,7 +2,7 @@ import { AppError, ValidationError, AuthenticationError, AuthorizationError, Dat
 import { sendSuccess } from "../utils/apiResponse.util";
 import { Request, Response } from "express";
 import crypto from "crypto";
-import { getDB } from "../db";
+import { getDB, withTransaction } from "../db";
 import { createNotification } from "./notification.controller";
 
 export const createListing = async (req: any, res: Response) => {
@@ -275,20 +275,21 @@ export const confirmPickup = async (req: any, res: Response) => {
     const now = new Date().toISOString();
     const txId = crypto.randomUUID();
 
-    // 1 & 2. Atomic Status Transition + DB Transaction (BEGIN / COMMIT / ROLLBACK)
-    await db.run("BEGIN TRANSACTION");
-    try {
-      const result = await db.run(
+    // 1 & 2. Atomic Status Transition + Pinned Connection DB Transaction (withTransaction)
+    let isAlreadyConfirmed = false;
+
+    await withTransaction(async (tx) => {
+      const result = await tx.run(
         "UPDATE waste_listings SET status = 'completed', actualWeightKg = ?, pickupPhotoUrl = ?, finalValue = ?, completedAt = ?, updatedAt = ? WHERE id = ? AND status IN ('accepted', 'scheduled')",
         [weight, pickupPhotoUrl || null, totalAmount, now, now, id]
       );
 
       if (!result || result.changes === 0) {
-        await db.run("ROLLBACK");
-        return res.status(409).json({ message: "This pickup has already been confirmed." });
+        isAlreadyConfirmed = true;
+        return;
       }
 
-      await db.run(
+      await tx.run(
         `INSERT INTO transactions (
           id, listingId, citizenId, recyclerId, material, finalWeightKg, pricePerKg, 
           amount, platformFee, citizenEarnings, paymentMethod, paymentStatus, status, createdAt
@@ -296,15 +297,14 @@ export const confirmPickup = async (req: any, res: Response) => {
         [txId, id, listing.citizenId, req.user.id, listing.materialType, weight, pricePerKg, totalAmount, platformFee, citizenEarnings, paymentMethod, 'completed', 'completed', now]
       );
 
-      await db.run(
+      await tx.run(
         "UPDATE users SET totalEarnings = COALESCE(totalEarnings, 0) + ? WHERE id = ?",
         [citizenEarnings, listing.citizenId]
       );
+    });
 
-      await db.run("COMMIT");
-    } catch (txErr) {
-      await db.run("ROLLBACK");
-      throw txErr;
+    if (isAlreadyConfirmed) {
+      return res.status(409).json({ message: "This pickup has already been confirmed." });
     }
 
     const citizenUser = await db.get("SELECT displayName, upiId FROM users WHERE id = ?", listing.citizenId);

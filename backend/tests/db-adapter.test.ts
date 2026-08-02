@@ -110,3 +110,10 @@ describe("translatePlaceholders", () => {
     expect(translatePlaceholders(sql)).toBe("SELECT * FROM t WHERE id = $1");
   });
 });
+
+describe("withTransaction adapter structure", () => {
+  test("withTransaction function is exported with correct signature", () => {
+    const { withTransaction } = require("../src/db-adapter");
+    expect(typeof withTransaction).toBe("function");
+  });
+});

@@ -391,6 +391,7 @@ export const getDB = async () => {
       get: (sql: string, params?: any[]) => pgAdapter.get(sql, params),
       run: (sql: string, params?: any[]) => pgAdapter.run(sql, params),
       all: (sql: string, params?: any[]) => pgAdapter.all(sql, params),
+      withTransaction: (callback: any) => pgAdapter.withTransaction(callback),
     };
   }
 
@@ -400,3 +401,29 @@ export const getDB = async () => {
   }
   return dbInstance;
 };
+
+export async function withTransaction<T>(
+  callback: (tx: {
+    get: <U = any>(sql: string, params?: any[]) => Promise<U | undefined>;
+    run: (sql: string, params?: any[]) => Promise<{ changes: number }>;
+    all: <U = any>(sql: string, params?: any[]) => Promise<U[]>;
+  }) => Promise<T>
+): Promise<T> {
+  if (process.env.USE_POSTGRES === "true") {
+    const pgAdapter = await import("./db-adapter");
+    return pgAdapter.withTransaction(callback);
+  }
+
+  const db = await getDB();
+  await db.run("BEGIN TRANSACTION");
+  try {
+    const result = await callback(db);
+    await db.run("COMMIT");
+    return result;
+  } catch (err) {
+    try {
+      await db.run("ROLLBACK");
+    } catch {}
+    throw err;
+  }
+}

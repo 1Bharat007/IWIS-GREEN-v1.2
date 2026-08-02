@@ -5,7 +5,7 @@
  * signatures as the sqlite-backed db.ts — so controllers can be switched over
  * one-by-one without changing their call sites.
  *
- * NOT wired into any controller in this stage (additive groundwork only).
+ * Provides real connection-pinned transaction support via `withTransaction`.
  */
 
 import { Pool, PoolConfig, QueryResult } from "pg";
@@ -42,19 +42,6 @@ function getPool(): Pool {
 }
 
 // ─── Placeholder Translation ────────────────────────────────────────────────
-//
-// SQLite uses `?` positional placeholders. Postgres uses `$1`, `$2`, ... 
-// This is the single riskiest piece of the migration: an off-by-one here
-// silently sends wrong values to wrong columns.
-//
-// Strategy: scan the SQL string left-to-right; each `?` that is NOT inside
-// a string literal gets replaced with the next `$n`. String literals are
-// single-quoted in SQL; we handle escaped single-quotes ('') correctly.
-//
-// We intentionally do NOT handle `?` inside double-quoted identifiers because
-// SQLite uses double-quotes for strings in some dialects, but our codebase
-// consistently uses single-quotes for string literals and double-quotes only
-// for identifiers (which would never contain `?`).
 
 export function translatePlaceholders(sql: string): string {
   let result = "";
@@ -67,9 +54,7 @@ export function translatePlaceholders(sql: string): string {
 
     if (inString) {
       if (ch === "'") {
-        // Could be end-of-string or escaped quote ('')
         if (sql[i + 1] === "'") {
-          // Escaped single quote — output both and skip two chars
           result += "''";
           i += 2;
           continue;
@@ -146,6 +131,55 @@ export async function all<T = any>(
   const client = getPool();
   const result: QueryResult = await client.query(pgSql, params);
   return result.rows as T[];
+}
+
+/**
+ * withTransaction<T>(callback) — Pins a single PoolClient, runs BEGIN,
+ * passes a bound { get, run, all } interface executing on that pinned client,
+ * COMMITs on success, ROLLBACKs on error, and ALWAYS releases the client in finally block.
+ */
+export async function withTransaction<T>(
+  callback: (client: {
+    get: <U = any>(sql: string, params?: any[]) => Promise<U | undefined>;
+    run: (sql: string, params?: any[]) => Promise<RunResult>;
+    all: <U = any>(sql: string, params?: any[]) => Promise<U[]>;
+  }) => Promise<T>
+): Promise<T> {
+  const poolClient = await getPool().connect();
+  try {
+    await poolClient.query("BEGIN");
+
+    const boundTx = {
+      get: async <U = any>(sql: string, params?: any[]): Promise<U | undefined> => {
+        const pgSql = translatePlaceholders(sql);
+        const res = await poolClient.query(pgSql, params);
+        return res.rows[0] as U | undefined;
+      },
+      run: async (sql: string, params?: any[]): Promise<RunResult> => {
+        const pgSql = translatePlaceholders(sql);
+        const res = await poolClient.query(pgSql, params);
+        return { changes: res.rowCount ?? 0 };
+      },
+      all: async <U = any>(sql: string, params?: any[]): Promise<U[]> => {
+        const pgSql = translatePlaceholders(sql);
+        const res = await poolClient.query(pgSql, params);
+        return res.rows as U[];
+      },
+    };
+
+    const result = await callback(boundTx);
+    await poolClient.query("COMMIT");
+    return result;
+  } catch (err) {
+    try {
+      await poolClient.query("ROLLBACK");
+    } catch (rollbackErr) {
+      console.error("[db-adapter] Transaction ROLLBACK failed:", rollbackErr);
+    }
+    throw err;
+  } finally {
+    poolClient.release();
+  }
 }
 
 /**

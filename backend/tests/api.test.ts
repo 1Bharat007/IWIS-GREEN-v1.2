@@ -1,7 +1,7 @@
 import "dotenv/config";
 import request from "supertest";
 import app from "../src/app";
-import { getDB } from "../src/db";
+import { getDB, withTransaction } from "../src/db";
 import { createClerkClient } from "@clerk/backend";
 
 describe("IWIS API Comprehensive Integration & Security Test Suite", () => {
@@ -187,6 +187,47 @@ describe("IWIS API Comprehensive Integration & Security Test Suite", () => {
 
       const citizen = await db.get("SELECT totalEarnings FROM users WHERE id = ?", citizenId);
       expect(citizen.totalEarnings).toBe(147.0);
+    });
+
+    it("withTransaction rolls back cleanly when an error is thrown mid-transaction (proving atomicity)", async () => {
+      const db = await getDB();
+      const now = new Date().toISOString();
+      const testListingId = "listing_crash_test_001";
+      const testTxId = "tx_crash_test_001";
+
+      await db.run("DELETE FROM transactions WHERE id = ?", testTxId);
+      await db.run("DELETE FROM waste_listings WHERE id = ?", testListingId);
+
+      // Ensure valid parent listing and users exist to satisfy foreign keys
+      const existingUser = await db.get("SELECT id FROM users LIMIT 1");
+      const validUserId = existingUser?.id || "user_test_ci_automation_001";
+
+      await db.run(
+        "INSERT INTO waste_listings (id, citizenId, recyclerId, materialType, estimatedWeightKg, pickupAddress, status, createdAt) VALUES (?, ?, ?, 'Paper', 10, '123 Green Street', 'scheduled', ?)",
+        [testListingId, validUserId, validUserId, now]
+      );
+
+      // Attempt transaction that throws midway
+      try {
+        await withTransaction(async (tx) => {
+          await tx.run(
+            `INSERT INTO transactions (
+              id, listingId, citizenId, recyclerId, material, finalWeightKg, pricePerKg, 
+              amount, platformFee, citizenEarnings, paymentMethod, paymentStatus, status, createdAt
+            ) VALUES (?, ?, ?, ?, 'Paper', 10, 15.0, 150, 3.0, 147.0, 'cash', 'completed', 'completed', ?)`,
+            [testTxId, testListingId, validUserId, validUserId, now]
+          );
+
+          // Force mid-transaction crash
+          throw new Error("SIMULATED_MID_TRANSACTION_CRASH");
+        });
+      } catch (err: any) {
+        expect(err.message).toBe("SIMULATED_MID_TRANSACTION_CRASH");
+      }
+
+      // Assert that ROLLBACK undid the insert and ZERO rows exist for testTxId
+      const checkTx = await db.get("SELECT id FROM transactions WHERE id = ?", testTxId);
+      expect(checkTx).toBeUndefined();
     });
   });
 
