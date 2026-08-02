@@ -229,6 +229,76 @@ describe("IWIS API Comprehensive Integration & Security Test Suite", () => {
       const checkTx = await db.get("SELECT id FROM transactions WHERE id = ?", testTxId);
       expect(checkTx).toBeUndefined();
     });
+
+    it("Atomic acceptBid status transition prevents double-assignment and double-awarding of green points", async () => {
+      const db = await getDB();
+      const now = new Date().toISOString();
+      const ownerId = "test_owner_bid_001";
+      const bidder1Id = "test_bidder1_001";
+      const bidder2Id = "test_bidder2_001";
+      const listingId = "listing_bid_race_001";
+      const batchId = "batch_bid_race_001";
+      const bid1Id = "bid_race_001";
+      const bid2Id = "bid_race_002";
+
+      // Cleanup
+      await db.run("DELETE FROM bids WHERE listingId = ?", listingId);
+      await db.run("DELETE FROM listings WHERE id = ?", listingId);
+      await db.run("DELETE FROM batches WHERE id = ?", batchId);
+      await db.run("DELETE FROM users WHERE id IN (?, ?, ?)", [ownerId, bidder1Id, bidder2Id]);
+
+      // Seed users, batch, open listing, and 2 bids
+      await db.run("INSERT INTO users (id, email, role, greenPoints, createdAt) VALUES (?, 'owner@test.com', 'citizen', 0, ?)", [ownerId, now]);
+      await db.run("INSERT INTO users (id, email, role, greenPoints, createdAt) VALUES (?, 'bidder1@test.com', 'recycler', 0, ?)", [bidder1Id, now]);
+      await db.run("INSERT INTO users (id, email, role, greenPoints, createdAt) VALUES (?, 'bidder2@test.com', 'recycler', 0, ?)", [bidder2Id, now]);
+
+      await db.run("INSERT INTO batches (id, userId, category, confidence, co2, timestamp) VALUES (?, ?, 'Plastic', 95, 2.5, ?)", [batchId, ownerId, now]);
+      await db.run("INSERT INTO listings (id, batchId, userId, status, priceRange, createdAt) VALUES (?, ?, ?, 'Open', '0-50', ?)", [listingId, batchId, ownerId, now]);
+
+      await db.run("INSERT INTO bids (id, listingId, recyclerId, offerAmount, status, createdAt) VALUES (?, ?, ?, 40.0, 'Pending', ?)", [bid1Id, listingId, bidder1Id, now]);
+      await db.run("INSERT INTO bids (id, listingId, recyclerId, offerAmount, status, createdAt) VALUES (?, ?, ?, 45.0, 'Pending', ?)", [bid2Id, listingId, bidder2Id, now]);
+
+      // Simulate atomic acceptBid for bid1 and bid2
+      const attemptAccept = async (targetBidId: string) => {
+        const bidInfo = await db.get("SELECT b.id, b.listingId, l.userId, l.status as listingStatus FROM bids b JOIN listings l ON b.listingId = l.id WHERE b.id = ?", targetBidId);
+        if (!bidInfo || bidInfo.listingStatus !== 'Open') {
+          return { status: 409, message: "Listing already assigned" };
+        }
+
+        let isAlreadyAssigned = false;
+        await withTransaction(async (tx) => {
+          const result = await tx.run("UPDATE listings SET status = 'Assigned' WHERE id = ? AND status = 'Open'", [bidInfo.listingId]);
+          if (!result || result.changes === 0) {
+            isAlreadyAssigned = true;
+            return;
+          }
+          await tx.run("UPDATE bids SET status = 'Rejected' WHERE listingId = ?", [bidInfo.listingId]);
+          await tx.run("UPDATE bids SET status = 'Accepted' WHERE id = ?", [targetBidId]);
+          await tx.run("UPDATE users SET greenPoints = COALESCE(greenPoints, 0) + 50 WHERE id = ?", [ownerId]);
+        });
+
+        if (isAlreadyAssigned) {
+          return { status: 409, message: "Listing already assigned" };
+        }
+        return { status: 200, message: "Success" };
+      };
+
+      const res1 = await attemptAccept(bid1Id);
+      const res2 = await attemptAccept(bid2Id);
+
+      expect(res1.status).toBe(200);
+      expect(res2.status).toBe(409);
+
+      // Verify DB invariants
+      const listing = await db.get("SELECT status FROM listings WHERE id = ?", listingId);
+      expect(listing.status).toBe("Assigned");
+
+      const acceptedBids = await db.all("SELECT id FROM bids WHERE listingId = ? AND status = 'Accepted'", listingId);
+      expect(acceptedBids.length).toBe(1);
+
+      const owner = await db.get("SELECT greenPoints FROM users WHERE id = ?", ownerId);
+      expect(owner.greenPoints).toBe(50);
+    });
   });
 
 });
