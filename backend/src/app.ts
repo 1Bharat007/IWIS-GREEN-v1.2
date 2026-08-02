@@ -137,6 +137,12 @@ app.use("/api/municipality", municipalityRoutes);
 import { debugGemini } from "./controllers/debug.controller";
 app.get("/api/debug/gemini", debugGemini);
 
+if (process.env.NODE_ENV !== "production") {
+  app.get("/api/debug/sentry-test", (_req, _res) => {
+    throw new Error("SENTRY_BACKEND_TEST_ERROR: Triggering test error for Sentry verification");
+  });
+}
+
 app.get("/", (_, res) => {
   res.send("IWIS Backend Running");
 });
