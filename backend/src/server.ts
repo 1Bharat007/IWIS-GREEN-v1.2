@@ -1,3 +1,7 @@
+// Sentry MUST be initialized before ANY other imports — this is required
+// for Sentry v9's auto-instrumentation to hook into Express, pg, etc.
+import "./instrument";
+
 import "dotenv/config";
 import app from "./app";
 import { initDB } from "./db";

@@ -17,6 +17,7 @@
   "dependencies": {
     "@clerk/express": "^2.1.46",
     "@google/genai": "^1.46.0",
+    "@sentry/node": "^10.69.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/express-rate-limit": "^6.0.0",

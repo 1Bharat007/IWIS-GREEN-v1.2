@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import * as Sentry from "@sentry/node";
 import authRoutes from "./routes/auth.routes";
 import wasteRoutes from "./routes/waste.routes";
 import chatRoutes from "./routes/chat.routes";
@@ -105,6 +106,23 @@ if (!secretKey) {
 
 app.use(clerkMiddleware({ publishableKey, secretKey }));
 
+// ─── Sentry Per-Request Context ───────────────────────────────────────────
+// Attach request ID and user ID to Sentry scope for every request.
+// Deliberately minimal PII: only user ID, never email/tokens.
+app.use((req: any, _res, next) => {
+  Sentry.withScope((scope) => {
+    // Request ID from logger.middleware.ts
+    if (req.id) {
+      scope.setTag("requestId", req.id);
+    }
+    // User ID from auth middleware (when authenticated)
+    if (req.user?.id) {
+      scope.setUser({ id: req.user.id });
+    }
+  });
+  next();
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/waste", wasteRoutes);
 app.use("/api/chat", chatRoutes);
@@ -128,7 +146,12 @@ app.get("/api/health", (_, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Global Error Handler
+// ─── Sentry Error Handler (MUST come BEFORE the app's own error handler) ──
+// In Sentry v9, Sentry.setupExpressErrorHandler() registers a proper Express
+// error-handling middleware that captures exceptions and forwards them to next().
+Sentry.setupExpressErrorHandler(app);
+
+// Global Error Handler (app's own — runs AFTER Sentry captures the error)
 app.use(errorMiddleware);
 
 export default app;
