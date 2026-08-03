@@ -4,6 +4,7 @@ import { Request, Response } from "express";
 import crypto from "crypto";
 import { getDB, withTransaction } from "../db";
 import { createNotification } from "./notification.controller";
+import { roundMoney } from "../utils/money";
 
 export const createListing = async (req: any, res: Response) => {
   try {
@@ -267,11 +268,11 @@ export const confirmPickup = async (req: any, res: Response) => {
     if (!priceRecord || priceRecord.pricePerKg < 0) {
       throw new ValidationError("Missing or invalid scrap price for this material.");
     }
-    const pricePerKg = priceRecord.pricePerKg;
+    const pricePerKg = roundMoney(priceRecord.pricePerKg);
 
-    const totalAmount = weight * pricePerKg;
-    const platformFee = totalAmount * 0.02;
-    const citizenEarnings = totalAmount - platformFee;
+    const totalAmount = roundMoney(weight * pricePerKg);
+    const platformFee = roundMoney(totalAmount * 0.02);
+    const citizenEarnings = roundMoney(totalAmount - platformFee);
     const now = new Date().toISOString();
     const txId = crypto.randomUUID();
 

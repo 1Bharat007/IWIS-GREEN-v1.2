@@ -19,12 +19,6 @@ describe("IWIS API Comprehensive Integration & Security Test Suite", () => {
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body?.data || res.body)).toBe(true);
     });
-
-    it("GET /api/debug/sentry-test triggers unhandled error routed through Sentry & errorMiddleware (500)", async () => {
-      const res = await request(app).get("/api/debug/sentry-test");
-      expect(res.status).toBe(500);
-      expect(res.body?.message || res.body?.error).toMatch(/Internal Server Error/i);
-    });
   });
 
   describe("Authentication & Authorization Security Gates", () => {

@@ -182,8 +182,8 @@ export default function Home() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {FEATURES.map(({ Icon, title, desc }) => (
-            <div key={title} className="p-6 rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)] hover:border-[var(--border-strong)] transition-colors">
-              <Icon size={24} className="text-[var(--text-primary)] mb-4" />
+            <div key={title} className="p-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent-border)] transition-colors">
+              <Icon size={24} className="text-[var(--accent)] mb-4" />
               <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">{title}</h3>
               <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{desc}</p>
             </div>

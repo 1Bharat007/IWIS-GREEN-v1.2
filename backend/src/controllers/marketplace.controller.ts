@@ -2,6 +2,7 @@ import { sendSuccess } from "../utils/apiResponse.util";
 import { AppError, ValidationError, AuthenticationError, AuthorizationError, DatabaseError } from "../utils/errors";
 import { Request, Response } from "express";
 import { getDB, withTransaction } from "../db";
+import { roundMoney } from "../utils/money";
 import crypto from "crypto";
 const uuidv4 = () => crypto.randomUUID();
 
@@ -78,7 +79,8 @@ export const placeBid = async (req: any, res: Response) => {
       throw new ValidationError("offerAmount is required.");
     }
 
-    const amount = typeof offerAmount === "number" ? offerAmount : parseFloat(offerAmount);
+    const parsedAmount = typeof offerAmount === "number" ? offerAmount : parseFloat(offerAmount);
+    const amount = roundMoney(parsedAmount);
     if (isNaN(amount) || amount <= 0) {
       throw new ValidationError("Valid offer amount greater than 0 is required.");
     }

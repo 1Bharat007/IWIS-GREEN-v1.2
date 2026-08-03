@@ -54,7 +54,7 @@ jobs:
           cd frontend
           npx playwright install --with-deps chromium
 
-      - name: Run Playwright E2E Tests
+      - name: Run Playwright E2E & Accessibility Tests (axe-core)
         env:
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}

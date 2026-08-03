@@ -2,6 +2,7 @@ import { AppError, ValidationError, AuthenticationError, AuthorizationError, Dat
 import { sendSuccess } from "../utils/apiResponse.util";
 import { Request, Response } from "express";
 import { getDB } from "../db";
+import { roundMoney } from "../utils/money";
 
 export const getMyTransactions = async (req: any, res: Response) => {
   try {
@@ -94,19 +95,19 @@ export const getEarningsSummary = async (req: any, res: Response) => {
     const totalTx = stats?.totalTransactions || 0;
     
     if (req.user.role === 'citizen') {
-      const totalEarnings = stats?.totalEarnings || 0;
+      const totalEarnings = roundMoney(stats?.totalEarnings || 0);
       sendSuccess(res, {
         totalEarnings,
-        totalWeightRecycled: stats?.totalWeightRecycled || 0,
+        totalWeightRecycled: roundMoney(stats?.totalWeightRecycled || 0),
         totalTransactions: totalTx,
-        averageEarningsPerTransaction: totalTx > 0 ? (totalEarnings / totalTx) : 0,
+        averageEarningsPerTransaction: totalTx > 0 ? roundMoney(totalEarnings / totalTx) : 0,
       });
     } else {
       sendSuccess(res, {
-        totalVolumeProcessed: stats?.totalVolumeProcessed || 0,
-        totalWeightRecycled: stats?.totalWeightRecycled || 0,
+        totalVolumeProcessed: roundMoney(stats?.totalVolumeProcessed || 0),
+        totalWeightRecycled: roundMoney(stats?.totalWeightRecycled || 0),
         totalTransactions: totalTx,
-        totalPlatformFees: stats?.totalPlatformFees || 0
+        totalPlatformFees: roundMoney(stats?.totalPlatformFees || 0)
       });
     }
   } catch (err) {
