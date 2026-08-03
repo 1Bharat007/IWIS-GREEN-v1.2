@@ -133,9 +133,11 @@ app.use("/api/transactions", transactionRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/municipality", municipalityRoutes);
-// Debug endpoint — shows Gemini config status without exposing keys
+// Debug endpoint — shows Gemini config status without exposing keys (development only)
 import { debugGemini } from "./controllers/debug.controller";
-app.get("/api/debug/gemini", debugGemini);
+if (process.env.NODE_ENV !== "production") {
+  app.get("/api/debug/gemini", debugGemini);
+}
 
 app.get("/", (_, res) => {
   res.send("IWIS Backend Running");
