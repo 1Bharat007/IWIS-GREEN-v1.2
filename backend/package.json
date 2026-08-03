@@ -22,7 +22,7 @@
     "@types/express": "^5.0.6",
     "@types/express-rate-limit": "^6.0.0",
     "@types/multer": "^2.0.0",
-    "@types/node": "^25.2.3",
+    "@types/node": "^26.1.2",
     "@types/nodemailer": "^8.0.1",
     "@types/sqlite3": "^3.1.11",
     "cors": "^2.8.6",
