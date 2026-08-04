@@ -14,7 +14,7 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch(endpoint: string, options: any = {}) {
+export async function apiFetch(endpoint: string, options: any = {}, isRetry = false): Promise<any> {
   const token = await getToken();
 
   let response: Response;
@@ -36,6 +36,16 @@ export async function apiFetch(endpoint: string, options: any = {}) {
       0,
       ErrorDictionary.NETWORK_ERROR.message
     );
+  }
+
+  // Handle 401 Unauthorized with 1-time automatic token refresh retry
+  if (response.status === 401 && !isRetry) {
+    console.warn(`[apiFetch] 401 received on ${endpoint}. Retrying with fresh session token...`);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const newToken = await getToken();
+    if (newToken) {
+      return apiFetch(endpoint, options, true);
+    }
   }
 
   if (!response.ok) {
@@ -60,11 +70,10 @@ export async function apiFetch(endpoint: string, options: any = {}) {
     } else if (response.status === 429) {
       friendlyMessage = ErrorDictionary.RATE_LIMIT_EXCEEDED.message;
     } else if (response.status >= 500) {
-      friendlyMessage = ErrorDictionary.AI_BUSY.message; // or server busy
+      friendlyMessage = ErrorDictionary.AI_BUSY.message;
     } else if (rawBackendMessage.includes("large")) {
       friendlyMessage = ErrorDictionary.IMAGE_TOO_LARGE.message;
     } else if (response.status === 400 || response.status === 403 || response.status === 404) {
-      // Use backend message if it's a validation error, but ensure it's not a stack trace
       friendlyMessage = rawBackendMessage.length < 100 ? rawBackendMessage : ErrorDictionary.DEFAULT_ERROR.message;
     }
 

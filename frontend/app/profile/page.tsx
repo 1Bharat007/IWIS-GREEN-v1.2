@@ -14,28 +14,33 @@ import {
   InfoIcon,
   LeafIcon
 } from "@/components/ui/Icons";
-import { useClerk } from "@clerk/nextjs";
+import { useClerk, useAuth } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { signOut } = useClerk();
+  const { isLoaded, isSignedIn } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiFetch("/auth/me")
-      .then((res) => {
-        const data = res?.data || res;
-        setProfile(data || null);
-      })
-      .catch(() => {
-        // Handle error quietly
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+    if (isLoaded && isSignedIn) {
+      apiFetch("/auth/me")
+        .then((res) => {
+          const data = res?.data || res;
+          setProfile(data || null);
+        })
+        .catch((err) => {
+          console.error("[profile] Fetch error:", err);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else if (isLoaded && !isSignedIn) {
+      setLoading(false);
+    }
+  }, [isLoaded, isSignedIn]);
 
   const handleLogout = async () => {
     localStorage.removeItem("iwis-user");
