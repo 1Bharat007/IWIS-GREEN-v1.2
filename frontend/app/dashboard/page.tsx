@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/Icons";
 import { demoDashboardData } from "@/lib/demo/dashboard";
 import { motion } from "framer-motion";
+import { useAuth } from "@clerk/nextjs";
 
 interface DashboardData {
   totalEarnings: number;
@@ -20,6 +21,7 @@ interface DashboardData {
 }
 
 export default function DashboardPage() {
+  const { isLoaded, isSignedIn } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState("citizen");
@@ -31,6 +33,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const load = async () => {
+      if (!isLoaded || !isSignedIn) return;
       try {
         const [meRes, analyticsRes, listingsRes, notifRes, txRes] = await Promise.all([
           apiFetch("/auth/me").then(r => r.data || r),
@@ -78,7 +81,7 @@ export default function DashboardPage() {
       }
     };
     load();
-  }, []);
+  }, [isLoaded, isSignedIn]);
 
   const handleSubmitFeedback = async () => {
     if (!pendingFeedbackTx || feedbackRating === 0) return;

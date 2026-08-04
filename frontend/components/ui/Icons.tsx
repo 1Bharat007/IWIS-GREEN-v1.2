@@ -44,6 +44,7 @@ export const ScanIcon = icon("M1 4V2h3M12 1h3v3M15 12v3h-3M4 15H1v-3M6 6h4v4H6z"
 export const HistoryIcon = icon("M8 5v3l2 2M1 8a7 7 0 1014 0A7 7 0 001 8z");
 export const MapPinIcon = icon("M8 9a3 3 0 100-6 3 3 0 000 6zM8 15s-5-4.686-5-8a5 5 0 0110 0c0 3.314-5 8-5 8z");
 export const ShoppingIcon = icon("M1 1h3l1.5 7.5M5 10h8l1.5-6H4M8 14a1 1 0 100-2 1 1 0 000 2zM13 14a1 1 0 100-2 1 1 0 000 2z");
+export const ShoppingBagIcon = icon("M3 5h10l-1 9H4L3 5zM5 5V3a3 3 0 016 0v2");
 export const LayoutIcon = icon("M1 1h6v6H1zM9 1h6v6H9zM1 9h6v6H1zM9 9h6v6H9z");
 export const TrophyIcon = icon("M5 1h6M3 1v4a5 5 0 0010 0V1M1 4h2M13 4h2M8 10v4M5 14h6");
 export const BotIcon = icon("M6 3a2 2 0 014 0M3 7h10l1 6H2L3 7zM6 11v2M10 11v2M8 1v2");

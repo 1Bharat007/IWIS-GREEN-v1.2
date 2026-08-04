@@ -26,21 +26,28 @@ type Listing = {
 
 import { demoListingsHistory } from "@/lib/demo/listings";
 
+import { useAuth } from "@clerk/nextjs";
+
 export default function SellHistoryPage() {
+  const { isLoaded, isSignedIn } = useAuth();
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    apiFetch("/listings/my")
-      .then((res) => {
-        const raw = res?.data || res;
-        const list = Array.isArray(raw) ? raw : [];
-        setListings(list);
-      })
-      .catch((err) => setError(err.message || "Failed to load history."))
-      .finally(() => setLoading(false));
-  }, []);
+    if (isLoaded && isSignedIn) {
+      apiFetch("/listings/my")
+        .then((res) => {
+          const raw = res?.data || res;
+          const list = Array.isArray(raw) ? raw : [];
+          setListings(list);
+        })
+        .catch((err) => setError(err.message || "Failed to load history."))
+        .finally(() => setLoading(false));
+    } else if (isLoaded && !isSignedIn) {
+      setLoading(false);
+    }
+  }, [isLoaded, isSignedIn]);
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {

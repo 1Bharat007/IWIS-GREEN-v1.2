@@ -9,6 +9,9 @@ export default function PWAInstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
+    // Check if user already dismissed the prompt
+    if (localStorage.getItem("iwis_pwa_dismissed") === "true") return;
+
     // Check if already installed as standalone PWA
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone;
     if (isStandalone) return;
@@ -29,10 +32,7 @@ export default function PWAInstallPrompt() {
 
     // Show iOS tip if on iOS Safari and not standalone
     if (iosDevice && !isStandalone) {
-      const dismissed = localStorage.getItem("iwis_pwa_ios_dismissed");
-      if (!dismissed) {
-        setShowPrompt(true);
-      }
+      setShowPrompt(true);
     }
 
     return () => {
@@ -47,14 +47,13 @@ export default function PWAInstallPrompt() {
     if (outcome === "accepted") {
       setDeferredPrompt(null);
       setShowPrompt(false);
+      localStorage.setItem("iwis_pwa_dismissed", "true");
     }
   };
 
   const handleDismiss = () => {
     setShowPrompt(false);
-    if (isIOS) {
-      localStorage.setItem("iwis_pwa_ios_dismissed", "true");
-    }
+    localStorage.setItem("iwis_pwa_dismissed", "true");
   };
 
   if (!showPrompt) return null;

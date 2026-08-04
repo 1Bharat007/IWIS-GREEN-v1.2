@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { useAuth, useUser, UserButton } from "@clerk/nextjs";
 import {
-  MenuIcon, XIcon, ScanIcon, LayoutIcon, HistoryIcon,
+  MenuIcon, XIcon, ScanIcon, LayoutIcon, HistoryIcon, ShoppingIcon, ShoppingBagIcon, DownloadIcon,
   BotIcon, SettingsIcon, UserIcon, SunIcon, MoonIcon, BarChartIcon, InfoIcon, BellIcon
 } from "@/components/ui/Icons";
 import { apiFetch } from "@/lib/api";
@@ -14,18 +14,25 @@ import { apiFetch } from "@/lib/api";
 const CITIZEN_NAV = [
   { name: "Home",        path: "/dashboard",    Icon: LayoutIcon },
   { name: "Scan",        path: "/scan",         Icon: ScanIcon },
+  { name: "Sell Waste",  path: "/sell",         Icon: ShoppingIcon },
+  { name: "Buy Waste",   path: "/marketplace",  Icon: ShoppingBagIcon },
   { name: "My Listings", path: "/sell/history", Icon: HistoryIcon },
-  { name: "Earnings",    path: "/earnings",     Icon: BarChartIcon },
+  { name: "App",         path: "/download",     Icon: DownloadIcon },
 ];
 
 const RECYCLER_NAV = [
   { name: "Pickup Feed", path: "/recycler/feed", Icon: LayoutIcon },
+  { name: "Buy Waste",   path: "/marketplace",  Icon: ShoppingBagIcon },
   { name: "Earnings",    path: "/earnings",      Icon: BarChartIcon },
+  { name: "App",         path: "/download",     Icon: DownloadIcon },
 ];
 
 const PUBLIC_NAV = [
-  { name: "Home", path: "/",     Icon: LayoutIcon },
-  { name: "Scan", path: "/scan", Icon: ScanIcon },
+  { name: "Home",        path: "/",             Icon: LayoutIcon },
+  { name: "Scan",        path: "/scan",         Icon: ScanIcon },
+  { name: "Sell Waste",  path: "/sell",         Icon: ShoppingIcon },
+  { name: "Buy Waste",   path: "/marketplace",  Icon: ShoppingBagIcon },
+  { name: "App",         path: "/download",     Icon: DownloadIcon },
 ];
 
 export default function Navbar() {
