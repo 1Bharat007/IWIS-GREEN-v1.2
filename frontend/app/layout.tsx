@@ -8,6 +8,7 @@ import { TaskOverlay } from "@/components/layout/TaskOverlay";
 import EcoBotFAB from "@/components/layout/EcoBotFAB";
 import OnboardingGate from "@/components/onboarding/OnboardingGate";
 import ServiceWorkerRegistration from "@/components/providers/ServiceWorkerRegistration";
+import PWAInstallPrompt from "@/components/providers/PWAInstallPrompt";
 
 export const viewport: Viewport = {
   themeColor: "#16a34a",
@@ -51,6 +52,7 @@ export default function RootLayout({
               </main>
               <EcoBotFAB />
               <TaskOverlay />
+              <PWAInstallPrompt />
             </TaskProvider>
           </ThemeProvider>
         </body>
