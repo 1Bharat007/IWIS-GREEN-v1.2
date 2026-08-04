@@ -209,7 +209,7 @@ export default function Home() {
         </div>
 
         {/* Carousel Container: flex overflow-x-auto on mobile, md:grid on laptop */}
-        <div className="flex md:grid md:grid-cols-3 gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-none -mx-4 px-4 md:mx-0 md:px-0">
+        <div tabIndex={0} aria-label="Steps carousel" className="flex md:grid md:grid-cols-3 gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-none -mx-4 px-4 md:mx-0 md:px-0 focus:outline-none focus:ring-1 focus:ring-[var(--accent)] rounded-2xl">
           {STEPS.map((s, idx) => (
             <div
               key={idx}
@@ -243,7 +243,7 @@ export default function Home() {
         </div>
 
         {/* Carousel Container: flex overflow-x-auto on mobile, md:grid on laptop */}
-        <div className="flex md:grid md:grid-cols-3 gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-none -mx-4 px-4 md:mx-0 md:px-0">
+        <div tabIndex={0} aria-label="Features carousel" className="flex md:grid md:grid-cols-3 gap-5 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-none -mx-4 px-4 md:mx-0 md:px-0 focus:outline-none focus:ring-1 focus:ring-[var(--accent)] rounded-2xl">
           {FEATURES.map(({ Icon, title, desc }) => (
             <div
               key={title}
